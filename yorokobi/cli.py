@@ -208,11 +208,10 @@ def backup_now():
     # 2. the backup has been accepted and initated (show stats)
     # 3. the backup fails to start (show reason, include 'not configured agentn')
 
-    response = request_backup_now('tcp://127.0.0.1:5123')
+    accepted = request_backup_now('tcp://127.0.0.1:5123')
     
-    if response['type'] == 'accepted':
-        pass
-    elif response['type'] == 'refused':
-        error_message = response['error-message']
+    if accepted:
+        print("backup request accepted; starting now")
+    else:
+        print("backup request isn't accepted; for reason X")
         
-        print(error_message)

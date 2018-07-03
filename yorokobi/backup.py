@@ -6,7 +6,6 @@
 #
 # Written by Jonathan De Wachter <dewachter.jonathan@gmail.com>, May 2018
 
-### -- EXPERIMENT
 from threading import Thread
 from remofile import Client
 
@@ -32,8 +31,7 @@ class Backup(Thread):
         pass
         
     def run(self):
-        
-        
+
         # create temporary directory
         
         # 1 - do actual backups and put in tmp dir
@@ -47,12 +45,7 @@ class Backup(Thread):
 
 # # constructed with tmp directory, database credential
 # # is finnished or not
-# 
-# 
-#     # from yorokobi.request import request_backup_now
-#     # message = request_backup_now('tcp://0.0.0.0:6996', 1000)
-#     # print(message)
-# 
+#
 #     # implement backup code here and later put it in relevant places
 #     # 1. create temporary directory
 #     # 2. read configure file (get database credentials)
@@ -137,9 +130,4 @@ class Backup(Thread):
 #     client.upload_file(tmp_dir.name)
 # 
 #     tmp_dir.cleanup()
-
-
-
-def do_backup():
-    print('do backup')
 
