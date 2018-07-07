@@ -6,6 +6,8 @@
 #
 # Written by Jonathan De Wachter <dewachter.jonathan@gmail.com>, May 2018
 
+import os
+from pathlib import PosixPath
 from tempfile import TemporaryDirectory
 import zmq
 from remofile import generate_token
@@ -16,90 +18,120 @@ ongoing_backups = {} # backup_id   -> (agent_id, backup_dir, backup_thread)
 def generate_agent_id():
     return 1122334455
 
+def is_registered_agent(agent_id):
+    for license_key, registered_agents in license_keys.items():
+        for registered_agent in registered_agents:
+            if agent_id == registered_agent:
+                return True
+
+    return False
+
 def generate_backup_id():
-    # the logic can be modified to fit backend architecture; it can be 
-    # unique during lifetime of the service, but the most important is 
-    # that it doesn't generate a backup ID already in used (see 
-    # ongoing_backups variable) 
-    
+    # the logic can be modified to fit backend architecture; it can be
+    # unique during lifetime of the service, but the most important is
+    # that it doesn't generate a backup ID already in used (see
+    # ongoing_backups variable)
+
     from random import randint
     return randint(1000, 9999)
 
 def pick_available_port():
-    # the logic can be modified to fit backend architecture; it should 
-    # return a port available on the backup server to transfer the 
-    # backups over with Remofile, and lock it until the transfer is 
+    # the logic can be modified to fit backend architecture; it should
+    # return a port available on the backup server to transfer the
+    # backups over with Remofile, and lock it until the transfer is
     # finished
-    
+
     from random import randint
     return randint(7480, 7490)
 
+def compute_backup_destination(agent_id, backup_id):
+    return PosixPath(os.getcwd(), 'agent-{0}'.format(agent_id), 'backup-{0}'.format(backup_id))
+    
+def is_backup_valid(agent_id, backup_id):
+    # the logic can be modified to accomodate business, here I simply 
+    # check the directory isn't empty but further check could be made 
+    # in order to verify backup validity (corrupted backups)
+    return True
+    
 def BackupThread(Thread):
     def __init__(self, directory, token, port):
-        self.directory = directory 
+        self.directory = directory
         self.token = token
         self.port = port
-        
+
         self.server = (self.directory, self.token)
 
     def run(self):
         self.server.run('localhost', self.port)
 
-def initiate_backup():
+    def terminate(self):
+        self.server.terminate()
+
+def initiate_backup(agent_id):
     # create a backup_id
     backup_id = generate_backup_id()
-    
+
     # create a temporary directory
-    backup_dir = TemporaryDirectory()
-    
+    backup_dir = compute_backup_destination(agent_id, backup_id)
+    backup_dir.mkdir(False)
+
     # pick an available port
     backup_port = pick_available_port()
-    
+
     # generate a remofile token
     backup_token = generate_token()
-    
+
     # create a backup thread
     backup_thread = BackupThread(backup_dir, backup_token, backup_port)
-    
-    return backup_id, backup_dir, backup_port, 
 
+    return backup_id, backup_thread
+
+def terminate_backup(backup_id):
+    assert backup_id in ongoing_backups
+    
+    backup = ongoing_backups[backup_id]
+    
+    backup.terminate()
+    backup.join()
+    
+    del ongoing_backups[backup_id]
     
 def handle_register_agent_request(request):
     assert request['type'] == 'register-agent'
-    
+
     license_key = request['license-key']
-    
+
     def manual_license_key_accept(license_key):
         print("License key {0} is requested for registration.".format(license_key))
         accept = input("Accept it ? [Y/n]")
 
         return accept == 'y' or accept == 'Y'
-        
+
     accept = manual_license_key_accept(license_key)
-    
+
     response = {}
     response['type'] = 'accepted' if accept else 'refused'
-    
+
     if accept:
         response['agent-id'] = generate_agent_id()
     else:
         response['reason'] = "The license key wasn't accepted."
 
     return response
-    
+
 def handle_initiate_backup_request(request):
     assert request['type'] == 'initiate-backup'
 
     agent_id = request['agent-id']
 
-    # check if there's already an ongoing backup associated to that 
+    # check if there's already an ongoing backup associated to that
     # agent, in this case, the backup is refused
     ongoing_backup_detected = False
-    
+
     for backup_id, backup in ongoing_backups.items():
-        if agent_id = backup[0]:
-            ongoing_backups = True
-    
+        if agent_id == backup[0]:
+            ongoing_backup_detected = True
+
     def manual_backup_request_accept(agent_id):
         print("Agent with ID {0} is requesting a backup.".format(agent_id))
         accept = input("Accept it ? [Y/n]")
@@ -112,16 +144,16 @@ def handle_initiate_backup_request(request):
 
     response = {}
     response['type'] = 'accepted' if accept else 'refused'
-    
+
     if accept:
-        backup_dir, backup_thread = initiate_backup(agent_id)
-        
+        backup_id, backup_thread = initiate_backup(agent_id)
+
         backup_thread.start()
-        ongoing_backups[backup_id] = (agent_id, backup_dir, backup_thread)
-        
+        ongoing_backups[backup_id] = backup_thread
+
         response['backup-id']      = backup_id
-        response['remofile-port']  = backup_port
-        response['remofile-token'] = backup_token
+        response['remofile-token'] = backup_thread.token
+        response['remofile-port']  = backup_thread.port
     else:
         if ongoing_backup_detected:
             response['reason'] = "There's already an ongoing backup associated with this agent."
@@ -131,61 +163,86 @@ def handle_initiate_backup_request(request):
     return response
 
 def handle_cancel_backup_request(request):
-    # TODO: to be implemented
+    # the difference with terminate backup request is that it should not 
+    # check backup validity, mark the backup as cancelled and possibly 
+    # delete the content (if data were sent over)
     assert request['type'] == 'cancel-backup'
+
+    agent_id = request['agent-id']
+    backup_id = request['backup-id']
+
+    # check if agent is registered
+    if not is_registered_agent(agent_id):
+        response = {}
+        response['type'] == 'refused'
+        response['message'] = "agent isn't even registered"
+        return response
     
-    # # agent_id = get_agent_id()
-    # # backup_id = get_backup_id()
-    # 
-    # backup = ongoing_backups.get(backup_id)
-    # 
-    # if not backup:
-    #     print("error, backup doesn't exist")
-    #     return
-    #     
-    # agent_id, backup_dir, _. backup_thread = backup
-    # 
-    # backup_thread.terminate()
-    # backup_dir.cleanup()
-    # backup_dir.close()
-    # 
-    # print("Handle cancel backup request; to be implemented.")
-    # response = {}
-    # 
-    # return response
+    # check if there's an actual ongoing backup associated to this id
+    backup = ongoing_backups.get(backup_id)
+
+    if not backup:
+        response = {}
+        response['type'] == 'refused'
+        response['message'] = "no backup associated to this id"
+        return response
+
+    terminate_backup(backup_id)
+    
+    # delete the backup directory (and therefore its content)
+    backup_dir = compute_backup_destination()   
+    backup_dir.delete()
+    
+    response = {}
+    response['type'] = 'accepted'
+    
+    return response
 
 def handle_terminate_backup_request(request):
+    # it should check for agent and backup id validity, and check for 
+    # backup vaildity
     assert request['type'] == 'terminate-backup'
+
+    agent_id = request['agent-id']
+    backup_id = request['backup-id']
+
+    # check if agent is registered
+    if not is_registered_agent(agent_id):
+        response = {}
+        response['type'] == 'refused'
+        response['message'] = "agent isn't even registered"
+        return response
     
-    # agent_id = get_agent_id()
-    # backup_id = get_backup_id()
-    
+    # check if there's an actual ongoing backup associated to this id
     backup = ongoing_backups.get(backup_id)
-    
+
     if not backup:
-        print("error, backup doesn't exist")
-        return
+        response = {}
+        response['type'] == 'refused'
+        response['message'] = "no backup associated to this id"
+        return response
+    
+    # check if we accept the backup; check for backup existency and
+    # validity
+    if not is_backup_valid(agent_id, backup_id):    
+        terminate_backup(backup_id)
+            
+        response = {}
+        response['type'] == 'refused'
+        response['message'] = "backup not accepted, failure, terminating bakcup"
+        return response
         
-    agent_id, backup_dir, _. backup_thread = backup
-    
+    terminate_backup(backup_id)
     backup_thread.terminate()
-    
-    # check backup existence
-    # check backup validity
-    # transfer backup to actual directory
-    # write backup report
-    
-    backup_dir.cleanup()
-    backup_dir.close()
-    
-    print("Handle terminate license request; to be implemented.")
+
     response = {}
-    
+    response['type'] == 'accepted'
+
     return response
 
 def handle_request(request):
     request_type = request['type']
-    
+
     if request_type == 'register-agent':
         return handle_register_agent_request(request)
     elif request_type == 'initiate-backup':

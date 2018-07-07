@@ -41,7 +41,6 @@ class Agent:
     """
 
     def __init__(self, config, logger):
-
         self.config = config
         self.logger = logger
 
@@ -56,6 +55,11 @@ class Agent:
         # backing up state related attribute
         self.backup = None
 
+    def __del__(self):
+        # if there is an ongoing backup, exit graciously
+        if self.backup:
+            self.backup.cancel_and_wait()
+        
     def get_status(self):
         response = {}
 
@@ -64,7 +68,7 @@ class Agent:
         return response
 
     def reload_configuration(self):
-        print("agent is reloading the following file: " + str(elf.config_filename))
+        print("agent is reloading the following file: " + str(self.config_filename))
 
         config_file = self.config_filename.open('r')
         new_config = load_configuration(config_file)
@@ -82,7 +86,7 @@ class Agent:
         return new_config
 
     def backup_now(self):
-        accepted = self.initialize_backup(self)
+        accepted = self.initiate_backup()
         
         return accepted
 
@@ -135,27 +139,41 @@ class Agent:
         schedule.run_pending()
 
     def process_backup(self):
-        pass
-        # if not self.is_backingup:
-        #     return
-        #
-        # assert self.backup_thread != None
-        #
-        # if self.backup_thread.is_terminated():
-        #     self.is_backingup = False
+        # nothing to do if there is no ongoing backup
+        if not self.backup:
+            return
+
+        # if the ongoing backup is terminated, send a terminate backup 
+        # signal to the backup server
+        if not self.backup.is_alive():
+            request = {}
+            request['type'] = 'terminate-backup'
+            request['agent-id'] = self.config['agent-id']
+            request['backup-id'] = self.backup.backup_id
+            
+            self.external_socket.send_json(request)
+            response = self.external_socket.recv_json()
+            
+            assert response['type'] == 'accepted'
+            
+            self.backup = None
 
     def initiate_backup(self):
         # attempt to start a backup; it fails if the agent is in the 
         # middle of a backup or if the back-up server doesn't accept it
+        print("aaa")
         if self.backup:
             return False
 
+        print("bbb")
         request = {}
-        request['type'] == 'initiate-backup'
-        request['agent-id'] == self.config['agent-id']
+        request['type'] = 'initiate-backup'
+        request['agent-id'] = self.config['agent-id']
 
         self.external_socket.send_json(request) # TODO: do timeout
+        print("ccc")
         response = self.external_socket.recv_json()
+        print("ddd")
 
         response_type = response['type']
 
@@ -174,14 +192,26 @@ class Agent:
         return True
 
     def cancel_ongoing_backup(self):
-        assert self.is_backingup  == True
-        assert self.backup_thread != None
+        # do nothing if there is no ongoing backup
+        if self.backup:
+            return
 
-        # send signal to thread
-        # wait until it's terminated
+        # send signal to thread and wait until it terminates
+        self.backup.cancel_and_wait()
+        
+        # send a terminate backup signal to the backup server
+        request = {}
+        request['type'] == 'cancel-backup'
+        request['agent-id'] == self.config['agent-id']
+        request['backup-id'] == self.backup.backup_id
 
-        self.backup_thread = None
-        self.is_backingup  = True
+        self.external_socket.send_json(request) # TODO: do timeout
+        response = self.external_socket.recv_json()
+
+        response_type = response['type']
+        assert response_type == 'accepted'
+        
+        self.backup = None
 
     def loop(self):
         self.running = True

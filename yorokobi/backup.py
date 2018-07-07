@@ -24,7 +24,7 @@ class Backup(Thread):
     def __init__(self, backup_id, port, token):
         Thread.__init__(self)
     
-        self.client = Client(port, token)
+        # self.client = Client(port, token)
         self.is_terminated = False
         
     def __del__(self):
@@ -32,6 +32,12 @@ class Backup(Thread):
         
     def run(self):
 
+        import time
+        
+        print('backup started')
+        time.sleep(2)
+        print('backup ended')
+        
         # create temporary directory
         
         # 1 - do actual backups and put in tmp dir
@@ -42,7 +48,10 @@ class Backup(Thread):
         self.is_terminated = True
         
         pass
-
+        
+    def cancel_and_wait(self):
+        pass # to be implemented
+        
 # # constructed with tmp directory, database credential
 # # is finnished or not
 #

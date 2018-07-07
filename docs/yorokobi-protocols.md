@@ -96,7 +96,6 @@ Requests:
 * TERMINATE_BACKUP
 * CANCEL_BACKUP
 
-
 ->
 REGISTER_LICENSE, license_key
 

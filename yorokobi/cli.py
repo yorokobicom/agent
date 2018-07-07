@@ -14,7 +14,6 @@ from yorokobi.configuration import get_default_filename, get_default_configurati
 from yorokobi.configuration import load_configuration, save_configuration
 from yorokobi.agent import Agent
 from yorokobi.agent import configure_agent, show_agent_status, reset_agent
-from yorokobi.backup import do_backup
 from yorokobi.request import request_backup_now
 
 def print_logo():
@@ -208,7 +207,7 @@ def backup_now():
     # 2. the backup has been accepted and initated (show stats)
     # 3. the backup fails to start (show reason, include 'not configured agentn')
 
-    accepted = request_backup_now('tcp://127.0.0.1:5123')
+    accepted = request_backup_now(10000)
     
     if accepted:
         print("backup request accepted; starting now")
