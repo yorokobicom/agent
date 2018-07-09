@@ -9,11 +9,12 @@
 import os
 from pathlib import PosixPath
 from tempfile import TemporaryDirectory
+from threading import Thread
 import zmq
-from remofile import generate_token
+from remofile import Server, generate_token
 
 license_keys = {}    # license_key -> [agent_id|agent_id|...]
-ongoing_backups = {} # backup_id   -> (agent_id, backup_dir, backup_thread)
+ongoing_backups = {} # backup_id   -> (agent_id, backup)
 
 def generate_agent_id():
     return 1122334455
@@ -42,27 +43,36 @@ def pick_available_port():
     # finished
 
     from random import randint
-    return randint(7480, 7490)
+    return randint(27480, 27490)
 
 def compute_backup_destination(agent_id, backup_id):
     return PosixPath(os.getcwd(), 'agent-{0}'.format(agent_id), 'backup-{0}'.format(backup_id))
-    
+
 def is_backup_valid(agent_id, backup_id):
-    # the logic can be modified to accomodate business, here I simply 
-    # check the directory isn't empty but further check could be made 
+    # the logic can be modified to accomodate business, here I simply
+    # check the directory isn't empty but further check could be made
     # in order to verify backup validity (corrupted backups)
     return True
-    
-def BackupThread(Thread):
+
+def detect_ongoing_backup(_agent_id):
+    for _, (agent_id, backup) in ongoing_backups.items():
+        if _agent_id == agent_id:
+            return True
+
+    return False
+
+class BackupThread(Thread):
     def __init__(self, directory, token, port):
+        Thread.__init__(self)
+
         self.directory = directory
         self.token = token
         self.port = port
-
-        self.server = (self.directory, self.token)
+        print(self.port)
+        self.server = Server(directory, token)
 
     def run(self):
-        self.server.run('localhost', self.port)
+        self.server.run(self.port, '127.0.0.1')
 
     def terminate(self):
         self.server.terminate()
@@ -73,7 +83,7 @@ def initiate_backup(agent_id):
 
     # create a temporary directory
     backup_dir = compute_backup_destination(agent_id, backup_id)
-    backup_dir.mkdir(False)
+    backup_dir.mkdir(parents=True, exist_ok=True)
 
     # pick an available port
     backup_port = pick_available_port()
@@ -88,14 +98,14 @@ def initiate_backup(agent_id):
 
 def terminate_backup(backup_id):
     assert backup_id in ongoing_backups
-    
-    backup = ongoing_backups[backup_id]
-    
+
+    _, backup = ongoing_backups[backup_id]
+
     backup.terminate()
     backup.join()
-    
+
     del ongoing_backups[backup_id]
-    
+
 def handle_register_agent_request(request):
     assert request['type'] == 'register-agent'
 
@@ -126,11 +136,7 @@ def handle_initiate_backup_request(request):
 
     # check if there's already an ongoing backup associated to that
     # agent, in this case, the backup is refused
-    ongoing_backup_detected = False
-
-    for backup_id, backup in ongoing_backups.items():
-        if agent_id == backup[0]:
-            ongoing_backup_detected = True
+    ongoing_backup_detected = detect_ongoing_backup(agent_id)
 
     def manual_backup_request_accept(agent_id):
         print("Agent with ID {0} is requesting a backup.".format(agent_id))
@@ -163,8 +169,8 @@ def handle_initiate_backup_request(request):
     return response
 
 def handle_cancel_backup_request(request):
-    # the difference with terminate backup request is that it should not 
-    # check backup validity, mark the backup as cancelled and possibly 
+    # the difference with terminate backup request is that it should not
+    # check backup validity, mark the backup as cancelled and possibly
     # delete the content (if data were sent over)
     assert request['type'] == 'cancel-backup'
 
@@ -177,7 +183,7 @@ def handle_cancel_backup_request(request):
         response['type'] == 'refused'
         response['message'] = "agent isn't even registered"
         return response
-    
+
     # check if there's an actual ongoing backup associated to this id
     backup = ongoing_backups.get(backup_id)
 
@@ -188,18 +194,18 @@ def handle_cancel_backup_request(request):
         return response
 
     terminate_backup(backup_id)
-    
+
     # delete the backup directory (and therefore its content)
-    backup_dir = compute_backup_destination()   
+    backup_dir = compute_backup_destination()
     backup_dir.delete()
-    
+
     response = {}
     response['type'] = 'accepted'
-    
+
     return response
 
 def handle_terminate_backup_request(request):
-    # it should check for agent and backup id validity, and check for 
+    # it should check for agent and backup id validity, and check for
     # backup vaildity
     assert request['type'] == 'terminate-backup'
 
@@ -212,7 +218,7 @@ def handle_terminate_backup_request(request):
         response['type'] == 'refused'
         response['message'] = "agent isn't even registered"
         return response
-    
+
     # check if there's an actual ongoing backup associated to this id
     backup = ongoing_backups.get(backup_id)
 
@@ -221,17 +227,17 @@ def handle_terminate_backup_request(request):
         response['type'] == 'refused'
         response['message'] = "no backup associated to this id"
         return response
-    
+
     # check if we accept the backup; check for backup existency and
     # validity
-    if not is_backup_valid(agent_id, backup_id):    
+    if not is_backup_valid(agent_id, backup_id):
         terminate_backup(backup_id)
-            
+
         response = {}
         response['type'] == 'refused'
         response['message'] = "backup not accepted, failure, terminating bakcup"
         return response
-        
+
     terminate_backup(backup_id)
     backup_thread.terminate()
 

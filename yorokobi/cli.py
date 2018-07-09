@@ -50,19 +50,19 @@ def run_agent(conf, log):
     The --conf and --log flags allow to change the location (and name)
     of the configuration and log files. By default, it uses
     'yorokobi.conf' and 'yorokobi.log' located in the current working
-    directory. The log file is created if it doesn't exist. If the 
-    configuration file doens't exist, it uses the default configuration 
+    directory. The log file is created if it doesn't exist. If the
+    configuration file doens't exist, it uses the default configuration
     values.
 
-    The agent fails to start if an error occurs during reading the 
-    configuration file, if the log file can't be created or if the 
+    The agent fails to start if an error occurs during reading the
+    configuration file, if the log file can't be created or if the
     connection with the backup server can't be etablished.
     """
-    
-    # load the configuration file (use default configuration values if 
+
+    # load the configuration file (use default configuration values if
     # it doesn't exist)
     config_filename = PosixPath(conf)
-    
+
     if config_filename.exists():
         try:
             config_file = config_filename.open('r')
@@ -76,7 +76,7 @@ def run_agent(conf, log):
         config = get_default_configuration()
 
     print(config)
-    
+
     # configure the logger with the log file
     logger = logging.getLogger('yorokobi')
 
@@ -123,27 +123,27 @@ def yorokobi_cli(reset_all, change_license, reconfigure_dbs):
     """ Configure the agent or show its status.
 
     This command starts the command-line configuration process of the
-    agent if it's not fully configured yet, or shows current the agent 
-    status. It also suggests the use of the --reset-all, 
+    agent if it's not fully configured yet, or shows current the agent
+    status. It also suggests the use of the --reset-all,
     --change-license and --reconfigure-dbs flags.
 
     If the --change-license flag is passed, the user is asked to
-    re-enter the license key, re-identifying the agent with a different 
+    re-enter the license key, re-identifying the agent with a different
     identifier.
 
     If the --reconfigure-dbs flag is passed, the user is given the
     ability to change the database credentitials and reselect the
     databases to backup.
-    
-    With the --reset-all flag, you can erase the current configuration 
-    and start from scratch again. It will ask the user if they want to 
+
+    With the --reset-all flag, you can erase the current configuration
+    and start from scratch again. It will ask the user if they want to
     reconfigure it now.
     """
-    
+
     # # get default path of the configuration file
     # config_filename = get_default_filename()
-    # 
-    # # read the configuration from the configuration file, or create the 
+    #
+    # # read the configuration from the configuration file, or create the
     # # default configuration if it doesn't exist
     # if not config_filename.exists():
     #     try:
@@ -151,7 +151,7 @@ def yorokobi_cli(reset_all, change_license, reconfigure_dbs):
     #     except:
     #         print("Failed to load the configuration file; doens't exist and unable to create it")
     #         exit(1)
-    # 
+    #
     #     config = get_default_configuration()
     #     save_configuration(config_file, config)
     #     config_file.close()
@@ -161,30 +161,30 @@ def yorokobi_cli(reset_all, change_license, reconfigure_dbs):
     #     except:
     #         print("Failed to load the configuration file; cannot open it")
     #         exit(1)
-    # 
+    #
     #     try:
     #         config = load_configuration(config_file)
     #     except:
     #         print("Failed to load the configuration file; no valid data found")
     #         exit(1)
-    # 
+    #
     # # use default connfiguration values if the --reset-all flag is
     # # passed
     # if reset_all:
     #     config = get_default_configuration()
-    # 
-    # # check if the agent still needs to be configured, or if it's 
+    #
+    # # check if the agent still needs to be configured, or if it's
     # # explicitely requested to be reconfigured
     # def is_agent_identified(config):
     #     return config['license-key'] != None and config['agent-id'] != None
-    # 
+    #
     # def is_database_configured(config):
     #     return config['selected-dbs'] != None
-    # 
+    #
     # change_license  = change_license  or not is_agent_identified(config)
     # reconfigure_dbs = reconfigure_dbs or not is_database_configured(config)
-    # 
-    # # if the agent isn't fully configured (or requested to be 
+    #
+    # # if the agent isn't fully configured (or requested to be
     # # reconfigured), configure it, otherwise show the agent status
     # if change_license or reconfigure_dbs:
     #     configure_agent(config_filename, config, change_license, reconfigure_dbs)
@@ -194,7 +194,7 @@ def yorokobi_cli(reset_all, change_license, reconfigure_dbs):
 
     print("show-agent-status")
     show_agent_status()
-    
+
 @click.command()
 def backup_now():
     """ Initiate a backup request.
@@ -208,9 +208,9 @@ def backup_now():
     # 3. the backup fails to start (show reason, include 'not configured agentn')
 
     accepted = request_backup_now(10000)
-    
+
     if accepted:
         print("backup request accepted; starting now")
     else:
         print("backup request isn't accepted; for reason X")
-        
+

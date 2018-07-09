@@ -12,6 +12,7 @@ from yorokobi.configuration import BACKUP_HOSTNAME, BACKUP_PORT
 from yorokobi.configuration import save_configuration
 from yorokobi.license import identify_agent
 from yorokobi.database import configure_databases
+from yorokobi.backup import Backup
 
 AGENT_ADDRESS = 'tcp://0.0.0.0:6996' # 'inproc://yorokobi-agent'
 
@@ -55,11 +56,11 @@ class Agent:
         # backing up state related attribute
         self.backup = None
 
-    def __del__(self):
-        # if there is an ongoing backup, exit graciously
-        if self.backup:
-            self.backup.cancel_and_wait()
-        
+#    def __del__(self):
+#        # if there is an ongoing backup, exit graciously
+#        if self.backup:
+#            self.backup.cancel_and_wait()
+
     def get_status(self):
         response = {}
 
@@ -87,7 +88,7 @@ class Agent:
 
     def backup_now(self):
         accepted = self.initiate_backup()
-        
+        print('backup-now: accepted')
         return accepted
 
     def run(self):
@@ -122,7 +123,7 @@ class Agent:
             request = self.internal_socket.recv_pyobj(zmq.DONTWAIT)
         except zmq.Again:
             return
-
+        print(request)
         if request == Request.GET_STATUS:
             response = self.get_status()
         elif request == Request.RELOAD_CONFIGURATION:
@@ -143,52 +144,67 @@ class Agent:
         if not self.backup:
             return
 
-        # if the ongoing backup is terminated, send a terminate backup 
+        # if the ongoing backup is terminated, send a terminate backup
         # signal to the backup server
         if not self.backup.is_alive():
             request = {}
             request['type'] = 'terminate-backup'
             request['agent-id'] = self.config['agent-id']
             request['backup-id'] = self.backup.backup_id
-            
+
             self.external_socket.send_json(request)
             response = self.external_socket.recv_json()
-            
+
             assert response['type'] == 'accepted'
-            
+
             self.backup = None
 
     def initiate_backup(self):
-        # attempt to start a backup; it fails if the agent is in the 
-        # middle of a backup or if the back-up server doesn't accept it
-        print("aaa")
+        # attempt to start a backup; it fails if the agent is in the
+        # middle of a back-up or if the back-up server doesn't accept it
+
+        # don't initiate a backup if already in the middle of one
+        # (should have been cancelled prior to calling this function)
         if self.backup:
             return False
 
-        print("bbb")
+        ## TODO (rework this): the agent should be identified prior to
+        ## calling this function
+        ## assert self.config['agent-id'] != None
+        #if self.config['agent-id'] == None:
+        #   print("the agent isn't identified and therefore can't initiate backup")
+        #   return False
+        self.config['agent-id'] = 42
+
         request = {}
         request['type'] = 'initiate-backup'
         request['agent-id'] = self.config['agent-id']
 
-        self.external_socket.send_json(request) # TODO: do timeout
-        print("ccc")
-        response = self.external_socket.recv_json()
-        print("ddd")
+        self.external_socket.send_json(request)
+
+        if self.external_socket.poll(10000) & zmq.POLLIN: #TODO: replace timeout value
+            response = self.external_socket.recv_json()
+        else:
+            raise TimeoutError
 
         response_type = response['type']
 
-        if response['type'] == 'refused':
+        # don't intiate a backup if the backup server didn't accept it
+        if response_type == 'refused':
             return False
 
+        print('aaffa')
         assert response_type == 'accepted'
 
         backup_id      = response['backup-id']
         remofile_port  = response['remofile-port']
         remofile_token = response['remofile-token']
-
+        print('bbb')
         self.backup = Backup(backup_id, remofile_port, remofile_token)
+        print('ccc')
         self.backup.start()
-        
+        print('ddd')
+
         return True
 
     def cancel_ongoing_backup(self):
@@ -198,7 +214,7 @@ class Agent:
 
         # send signal to thread and wait until it terminates
         self.backup.cancel_and_wait()
-        
+
         # send a terminate backup signal to the backup server
         request = {}
         request['type'] == 'cancel-backup'
@@ -210,7 +226,7 @@ class Agent:
 
         response_type = response['type']
         assert response_type == 'accepted'
-        
+
         self.backup = None
 
     def loop(self):
