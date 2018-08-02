@@ -116,10 +116,10 @@ def run_agent(conf, log):
     logger.warning('The Yorokobi agent has succesfully stopped')
 
 @click.command()
-@click.option('--reset-all')
 @click.option('--change-license')
 @click.option('--reconfigure-dbs')
-def yorokobi_cli(reset_all, change_license, reconfigure_dbs):
+@click.option('--reset-all')
+def yorokobi_cli(change_license, reconfigure_dbs, reset_all):
     """ Configure the agent or show its status.
 
     This command starts the command-line configuration process of the
@@ -129,7 +129,7 @@ def yorokobi_cli(reset_all, change_license, reconfigure_dbs):
 
     If the --change-license flag is passed, the user is asked to
     re-enter the license key, re-identifying the agent with a different
-    identifier.
+    agent ID.
 
     If the --reconfigure-dbs flag is passed, the user is given the
     ability to change the database credentitials and reselect the
@@ -140,60 +140,56 @@ def yorokobi_cli(reset_all, change_license, reconfigure_dbs):
     reconfigure it now.
     """
 
-    # # get default path of the configuration file
-    # config_filename = get_default_filename()
-    #
-    # # read the configuration from the configuration file, or create the
-    # # default configuration if it doesn't exist
-    # if not config_filename.exists():
-    #     try:
-    #         config_file = config_filename.open('w')
-    #     except:
-    #         print("Failed to load the configuration file; doens't exist and unable to create it")
-    #         exit(1)
-    #
-    #     config = get_default_configuration()
-    #     save_configuration(config_file, config)
-    #     config_file.close()
-    # else:
-    #     try:
-    #         config_file = config_filename.open('r')
-    #     except:
-    #         print("Failed to load the configuration file; cannot open it")
-    #         exit(1)
-    #
-    #     try:
-    #         config = load_configuration(config_file)
-    #     except:
-    #         print("Failed to load the configuration file; no valid data found")
-    #         exit(1)
-    #
-    # # use default connfiguration values if the --reset-all flag is
-    # # passed
-    # if reset_all:
-    #     config = get_default_configuration()
-    #
-    # # check if the agent still needs to be configured, or if it's
-    # # explicitely requested to be reconfigured
-    # def is_agent_identified(config):
-    #     return config['license-key'] != None and config['agent-id'] != None
-    #
-    # def is_database_configured(config):
-    #     return config['selected-dbs'] != None
-    #
-    # change_license  = change_license  or not is_agent_identified(config)
-    # reconfigure_dbs = reconfigure_dbs or not is_database_configured(config)
-    #
-    # # if the agent isn't fully configured (or requested to be
-    # # reconfigured), configure it, otherwise show the agent status
-    # if change_license or reconfigure_dbs:
-    #     configure_agent(config_filename, config, change_license, reconfigure_dbs)
-    # else:
-    #     print("show-agent-status")
-    #     # show_agent_status(config)
-
-    print("show-agent-status")
-    show_agent_status()
+    # get default path of the configuration file
+    config_filename = get_default_filename()
+    
+    # read the configuration from the configuration file, or create the
+    # default configuration if it doesn't exist
+    if not config_filename.exists():
+        try:
+            config_file = config_filename.open('w')
+        except:
+            print("Failed to load the configuration file; doens't exist and unable to create it")
+            exit(1)
+    
+        config = get_default_configuration()
+        save_configuration(config_file, config)
+        config_file.close()
+    else:
+        try:
+            config_file = config_filename.open('r')
+        except:
+            print("Failed to load the configuration file; cannot open it")
+            exit(1)
+    
+        try:
+            config = load_configuration(config_file)
+        except:
+            print("Failed to load the configuration file; no valid data found")
+            exit(1)
+    
+    # use default connfiguration values if the --reset-all flag is
+    # passed
+    if reset_all:
+        config = get_default_configuration()
+    
+    # check if the agent still needs to be configured, or if it's
+    # explicitely requested to be reconfigured
+    def is_agent_identified(config):
+        return config['license-key'] != None and config['agent-id'] != None
+    
+    def is_database_configured(config):
+        return config['selected-dbs'] != None
+    
+    change_license  = change_license  or not is_agent_identified(config)
+    reconfigure_dbs = reconfigure_dbs or not is_database_configured(config)
+    
+    # if the agent isn't fully configured (or requested to be
+    # reconfigured), configure it, otherwise show the agent status
+    if change_license or reconfigure_dbs:
+        configure_agent(config_filename, config, change_license, reconfigure_dbs)
+    else:
+        show_agent_status()
 
 @click.command()
 def backup_now():

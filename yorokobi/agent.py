@@ -9,7 +9,7 @@
 import schedule
 import zmq
 from yorokobi.configuration import BACKUP_HOSTNAME, BACKUP_PORT
-from yorokobi.configuration import save_configuration
+from yorokobi.configuration import load_configuration, save_configuration
 from yorokobi.license import identify_agent
 from yorokobi.database import configure_databases
 from yorokobi.backup import Backup
@@ -56,7 +56,8 @@ class Agent:
         # backing up state related attribute
         self.backup = None
 
-#    def __del__(self):
+    def __del__(self):
+        pass
 #        # if there is an ongoing backup, exit graciously
 #        if self.backup:
 #            self.backup.cancel_and_wait()
@@ -69,22 +70,23 @@ class Agent:
         return response
 
     def reload_configuration(self):
-        print("agent is reloading the following file: " + str(self.config_filename))
+        try:
+            config_file = self.config_filename.open('r')
+            new_config = load_configuration(config_file)
+            config_file.close()
+        except Exception as err:
+            print("An error occured during reloading the configuration file")
+            return None
 
-        config_file = self.config_filename.open('r')
-        new_config = load_configuration(config_file)
-        config_file.close()
+        def perform_config_change(new_config):
+          # TODO: do config update according to current agent state (for
+          # example, what if the agent is in the middle of a backup, what
+          # behvior should we expect)
+          self.config = new_config
 
-        # do the actual change # TODO: perform config update according to the agent state
-        # def perform_config_change(new_config):
-            # pass
+        perform_config_change(new_config)
 
-        # perform_config_change(new_config)
-
-        self.config = new_config
-
-        # return new_config
-        return new_config
+        return self.config
 
     def backup_now(self):
         accepted = self.initiate_backup()
@@ -106,7 +108,7 @@ class Agent:
         schedule.every().wednesday.at("13:15").do(scheduler_job)
 
     def initialize_sockets(self):
-        context = zmq.Context.instance()
+        context = zmq.Context()
 
         self.internal_socket = context.socket(zmq.REP)
         self.internal_socket.bind(self.internal_socket_address)
@@ -131,6 +133,7 @@ class Agent:
         elif request == Request.BACKUP_NOW:
             response = self.backup_now()
 
+        print(response)
         self.internal_socket.send_pyobj(response)
 
     def process_external_socket(self):
@@ -200,7 +203,7 @@ class Agent:
         remofile_port  = response['remofile-port']
         remofile_token = response['remofile-token']
         print('bbb')
-        self.backup = Backup(backup_id, remofile_port, remofile_token)
+        self.backup = Backup(remofile_port, remofile_token, self.config)
         print('ccc')
         self.backup.start()
         print('ddd')
@@ -338,7 +341,10 @@ def configure_agent(config_filename, config, change_license, reconfigure_dbs):
 
         try:
             loaded_config = request_reload_configuration(1000)
-            assert loaded_config == config
+
+            # TODO: check if the returned loaded config by the agent is
+            # the same as the one we have
+            # assert loaded_config == config
 
         except TimeoutError:
             has_agent_reloaded = False
@@ -346,6 +352,7 @@ def configure_agent(config_filename, config, change_license, reconfigure_dbs):
         print_configuration_file_updated(has_agent_reloaded)
 
 def show_agent_status():
+    print("show-agent-status")
     is_agent_connected = True
 
     try:

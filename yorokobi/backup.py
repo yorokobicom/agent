@@ -46,7 +46,7 @@ class Backup(Thread):
 
     """
 
-    def __init__(self, config, port, token):
+    def __init__(self, port, token, config):
         Thread.__init__(self)
 
         self.config = config
@@ -57,7 +57,7 @@ class Backup(Thread):
     def run(self):
         temporary_dir = TemporaryDirectory()
 
-        self.dump_databases(dbs, temporary_dir)
+        self.dump_databases(temporary_dir)
         self.create_tarball(temporary_dir)
         self.send_tarball_over(temporary_dir)
 
@@ -81,28 +81,28 @@ class Backup(Thread):
 
         selected_dbs = self.config['selected-dbs']
 
-        dbs, host, port, name, password=None
-
+        # dbs, host, port, name, password = None
+        #
         # compute dirs
         temporary_dir = PosixPath(temporary_dir.name)
         assert temporary_dir.exists() and temporary_dir.is_dir()
 
         databases_directory = temporary_dir / 'backups' / 'databases' / 'PostgreSQL'
         databases_directory.mkdir(parents=True, exist_ok=False)
-
-        # connect to the database and dump the selected databases
-        for database in selected_dbs:
-            database_filename = databases_directory / (database + '.sql')
-            print(database_filename)
-
-            database_file = database_filename.open('w')
-
-            command = compute_dump_database_command(foo, bar)
-            subprocess.run(command, stdout=database_file)
-            database_file.close()
-
-            database_file = database_filename.open('r')
-            print(database_file.read())
+        #
+        # # connect to the database and dump the selected databases
+        # for database in selected_dbs:
+        #     database_filename = databases_directory / (database + '.sql')
+        #     print(database_filename)
+        #
+        #     database_file = database_filename.open('w')
+        #
+        #     command = compute_dump_database_command(foo, bar)
+        #     subprocess.run(command, stdout=database_file)
+        #     database_file.close()
+        #
+        #     database_file = database_filename.open('r')
+        #     print(database_file.read())
 
     def create_tarball(self, temporary_dir):
         # compute tarball name (something like this '2018.05.04.14.00.03.tar.gz')
@@ -122,5 +122,5 @@ class Backup(Thread):
         temporary_dir = PosixPath(temporary_dir.name)
         tarbal_filename = temporary_dir / tarball_name
 
-        client = remofile.Client(',127.0.0.1', self.remote_port, self.remote_token)
+        client = Client('127.0.0.1', self.remofile_port, self.remofile_token)
         client.upload_file(tarbal_filename, '/')
