@@ -14,6 +14,7 @@ from yorokobi.configuration import get_default_filename, get_default_configurati
 from yorokobi.configuration import load_configuration, save_configuration
 from yorokobi.agent import Agent
 from yorokobi.agent import configure_agent, show_agent_status, reset_agent
+from yorokobi.request import request_configuration, request_reload_configuration
 from yorokobi.request import request_backup_now
 
 def print_logo():
@@ -31,9 +32,10 @@ def print_logo():
 
     print(logo)
 
+TIMEOUT = 100
 
-LOG_ERROR_MSG           = "Foobar"
-CONFIGURATION_ERROR_MSG = "Foobar"
+LOG_ERROR_MSG           = "An error occured during the setup of the logger phase."
+CONFIGURATION_ERROR_MSG = "An error occured during the loading configuration file phase."
 CONNECTION_ERROR_MSG    = "Foobar"
 
 @click.command()
@@ -44,8 +46,7 @@ def run_agent(conf, log):
 
     This command starts the agent in the background after it initiates
     the logger to use a log file and loads the configuration file. The
-    agent etablishes a connection with the server and runs indefinitively
-    until it's explicitly terminated.
+    agent runs indefinitively until it's explicitly terminated.
 
     The --conf and --log flags allow to change the location (and name)
     of the configuration and log files. By default, it uses
@@ -64,18 +65,14 @@ def run_agent(conf, log):
     config_filename = PosixPath(conf)
 
     if config_filename.exists():
-        try:
-            config_file = config_filename.open('r')
-            config = load_configuration(config_file)
-            config_file.close()
-        except Exception as excp:
-            print(excp)
-            print(CONFIGURATION_ERROR_MSG)
-            exit(1)
+        config_file = config_filename.open('r')
+        config = load_configuration(config_file)
+        config_file.close()
     else:
         config = get_default_configuration()
-
-    print(config)
+        config_file = config_filename.open('w+')
+        save_configuration(config_file, config)
+        config_file.close()
 
     # configure the logger with the log file
     logger = logging.getLogger('yorokobi')
@@ -88,7 +85,7 @@ def run_agent(conf, log):
 
     file_handler.setLevel(logging.DEBUG)
 
-    console_handler = logging.FileHandler(log)
+    console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.ERROR)
 
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -98,21 +95,15 @@ def run_agent(conf, log):
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
-    # print 'starting the agent' log message
-    logger.warning("The Yorokobi agent is starting with configuration file '{0}' and log file {1}".format(conf, log))
+    # print startup message
+    print("The Yorokobi agent is starting with configuration file '{0}' and log file {1}".format(conf, log))
 
     # create the agent instance and start its main loop
-    agent = Agent(config, logger)
-    agent.config_filename = config_filename
+    agent = Agent(config, config_filename, logger)
 
-    try:
-        agent.run()
-    except Exception: # connection problem
-        pass
-    except Exception:
-        pass
+    agent.run()
 
-    # print 'successfully stopped agent' log message
+    # log 'successfully stopped agent' message
     logger.warning('The Yorokobi agent has succesfully stopped')
 
 @click.command()
@@ -140,54 +131,34 @@ def yorokobi_cli(change_license, reconfigure_dbs, reset_all):
     reconfigure it now.
     """
 
-    # get default path of the configuration file
-    config_filename = get_default_filename()
-    
-    # read the configuration from the configuration file, or create the
-    # default configuration if it doesn't exist
-    if not config_filename.exists():
-        try:
-            config_file = config_filename.open('w')
-        except:
-            print("Failed to load the configuration file; doens't exist and unable to create it")
-            exit(1)
-    
-        config = get_default_configuration()
-        save_configuration(config_file, config)
-        config_file.close()
-    else:
-        try:
-            config_file = config_filename.open('r')
-        except:
-            print("Failed to load the configuration file; cannot open it")
-            exit(1)
-    
-        try:
-            config = load_configuration(config_file)
-        except:
-            print("Failed to load the configuration file; no valid data found")
-            exit(1)
-    
+    # ask the agent (running in the background) its current
+    # configuration
+    try:
+        config = request_configuration(TIMEOUT)
+    except TimeoutError:
+        print("The agent doesn't appear running; ensure the agent is started.")
+        exit(1)
+
     # use default connfiguration values if the --reset-all flag is
     # passed
     if reset_all:
         config = get_default_configuration()
-    
+
     # check if the agent still needs to be configured, or if it's
     # explicitely requested to be reconfigured
     def is_agent_identified(config):
         return config['license-key'] != None and config['agent-id'] != None
-    
+
     def is_database_configured(config):
         return config['selected-dbs'] != None
-    
+
     change_license  = change_license  or not is_agent_identified(config)
     reconfigure_dbs = reconfigure_dbs or not is_database_configured(config)
-    
+
     # if the agent isn't fully configured (or requested to be
     # reconfigured), configure it, otherwise show the agent status
     if change_license or reconfigure_dbs:
-        configure_agent(config_filename, config, change_license, reconfigure_dbs)
+        configure_agent(config, change_license, reconfigure_dbs)
     else:
         show_agent_status()
 
@@ -203,10 +174,14 @@ def backup_now():
     # 2. the backup has been accepted and initated (show stats)
     # 3. the backup fails to start (show reason, include 'not configured agentn')
 
-    accepted = request_backup_now(10000)
+    try:
+        accepted = request_backup_now(TIMEOUT)
+    except TimeoutError:
+        print("The agent doesn't appear running; ensure the agent is started.")
+        exit(1)
 
     if accepted:
-        print("backup request accepted; starting now")
+        print("Backup request accepted; starting now.")
     else:
-        print("backup request isn't accepted; for reason X")
+        print("Backup request isn't accepted; for reason X")
 

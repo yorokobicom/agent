@@ -8,23 +8,24 @@
 
 import schedule
 import zmq
-from yorokobi.configuration import BACKUP_HOSTNAME, BACKUP_PORT
+
+YOROKOBI_URL = 'http://api.yorokobi.co/v1/agents'
+AGENT_ADDRESS = 'tcp://0.0.0.0:12996'
+TIMEOUT = 100
+
 from yorokobi.configuration import load_configuration, save_configuration
 from yorokobi.license import identify_agent
 from yorokobi.database import configure_databases
 from yorokobi.backup import Backup
-
-AGENT_ADDRESS = 'tcp://0.0.0.0:6996' # 'inproc://yorokobi-agent'
-
 from yorokobi.request import Request
 from yorokobi.request import request_reload_configuration
-from yorokobi.request import request_get_status
+from yorokobi.request import request_status
 
 class Agent:
     """ Yorokobi agent running in the background.
 
     The agent listens to the front-end CLI requests (using IPC on
-    address 'inproc://yorokobi-agent') and works with the backup server
+    address 'ipc://yorokobi-agent') and works with the backup server
     to authenticate the agent and send backups over.
 
     It must be constructed with the agent configuration and a logger.
@@ -35,23 +36,19 @@ class Agent:
 
     The agent enters the main loop when the blocking run() method is
     called and must be stopped with the terminate() method called
-    asynchronously.
+    asynchronously (from a different thread).
 
     When the agent is running, it's either backing up or not backing up.
     When there is an ongoing backup, an external thread in launched.
     """
 
-    def __init__(self, config, logger):
+    def __init__(self, config, config_filename, logger):
         self.config = config
+        self.config_filename = config_filename
+        
         self.logger = logger
 
-        self.config_filename = None
-
         self.running = False
-
-        # compute internal and external socket addresses
-        self.internal_socket_address = AGENT_ADDRESS
-        self.external_socket_address = 'tcp://{0}:{1}'.format(BACKUP_HOSTNAME, str(BACKUP_PORT))
 
         # backing up state related attribute
         self.backup = None
@@ -62,6 +59,30 @@ class Agent:
 #        if self.backup:
 #            self.backup.cancel_and_wait()
 
+    def get_configuration(self):
+        return self.config
+
+    def reload_configuration(self, config):
+    
+        def perform_config_change(new_config):
+          # TODO: do config update according to current agent state (for
+          # example, what if the agent is in the middle of a backup, what
+          # behvior should we expect)
+          self.config = new_config
+
+        perform_config_change(config)
+
+        try:
+            config_file = self.config_filename.open('w+')
+            save_configuration(config_file, config)
+            config_file.close()
+        except Exception as e:
+            print(e)
+            print("An error occured during reloading the configuration file")
+            return None
+
+        return self.config
+
     def get_status(self):
         response = {}
 
@@ -69,35 +90,21 @@ class Agent:
 
         return response
 
-    def reload_configuration(self):
-        try:
-            config_file = self.config_filename.open('r')
-            new_config = load_configuration(config_file)
-            config_file.close()
-        except Exception as err:
-            print("An error occured during reloading the configuration file")
-            return None
-
-        def perform_config_change(new_config):
-          # TODO: do config update according to current agent state (for
-          # example, what if the agent is in the middle of a backup, what
-          # behvior should we expect)
-          self.config = new_config
-
-        perform_config_change(new_config)
-
-        return self.config
-
     def backup_now(self):
         accepted = self.initiate_backup()
         print('backup-now: accepted')
         return accepted
 
     def run(self):
+        context = zmq.Context()
+
+        self.socket = context.socket(zmq.REP)
+        self.socket.bind(AGENT_ADDRESS)
+
         self.setup_scheduler()
-        self.initialize_sockets()
         self.loop()
-        self.terminate_sockets()
+
+        self.socket.unbind(AGENT_ADDRESS)
 
     def setup_scheduler(self):
         def scheduler_job():
@@ -107,37 +114,22 @@ class Agent:
 
         schedule.every().wednesday.at("13:15").do(scheduler_job)
 
-    def initialize_sockets(self):
-        context = zmq.Context()
-
-        self.internal_socket = context.socket(zmq.REP)
-        self.internal_socket.bind(self.internal_socket_address)
-
-        self.external_socket = context.socket(zmq.REQ)
-        self.external_socket.connect(self.external_socket_address)
-
-    def terminate_sockets(self):
-        self.external_socket.disconnect(self.external_socket_address)
-        self.internal_socket.unbind(self.internal_socket_address)
-
-    def process_internal_socket(self):
+    def process_socket(self):
         try:
-            request = self.internal_socket.recv_pyobj(zmq.DONTWAIT)
+            request = self.socket.recv_pyobj(zmq.DONTWAIT)
         except zmq.Again:
             return
-        print(request)
-        if request == Request.GET_STATUS:
+
+        if request['type'] == Request.GET_CONFIGURATION:
+            response = self.get_configuration()
+        elif request['type'] == Request.RELOAD_CONFIGURATION:
+            response = self.reload_configuration(request['config'])
+        elif request['type'] == Request.GET_STATUS:
             response = self.get_status()
-        elif request == Request.RELOAD_CONFIGURATION:
-            response = self.reload_configuration()
-        elif request == Request.BACKUP_NOW:
+        elif request['type'] == Request.BACKUP_NOW:
             response = self.backup_now()
 
-        print(response)
-        self.internal_socket.send_pyobj(response)
-
-    def process_external_socket(self):
-        pass
+        self.socket.send_pyobj(response)
 
     def process_scheduler(self):
         schedule.run_pending()
@@ -155,6 +147,23 @@ class Agent:
             request['agent-id'] = self.config['agent-id']
             request['backup-id'] = self.backup.backup_id
 
+            
+            # do request
+            # ----------
+            # auth = HTTPBasicAuth(license_key, account_password)
+            # 
+            # params = {
+            #     'hostname'  : socket.gethostname(),
+            #     'ip_address': socket.gethostbyname(socket.gethostname())
+            # }
+            # 
+            # response = requests.post(YOROKOBI_URL + "/v1/agents", data=params, auth=auth)
+            # 
+            # if response.status_code == 200:
+            #     return response.json['id'], None
+            # else:
+            #     return None, response.text
+            
             self.external_socket.send_json(request)
             response = self.external_socket.recv_json()
 
@@ -236,66 +245,14 @@ class Agent:
         self.running = True
 
         while self.running:
-            self.process_internal_socket()
-            self.process_external_socket()
+            self.process_socket()
             self.process_scheduler()
             self.process_backup()
 
     def terminate(self):
         self.running = False
 
-def print_configuration_file_updated(has_agent_reloaded):
-    if has_agent_reloaded:
-        print("agent reloadded")
-    else:
-        print("agent didnt' reload")
-
-# def print_configuration_file_updated(is_agent_reloaded):
-    # """ Print configuration file is updated message.
-
-    # The message is different if the agent wasn't running and couldn't
-    # reload the configuration file immediatly.
-
-    # If the agent was running, here is the following printed message.
-
-        # Configuration file was successfully updated.
-
-        # The agent just reloaded the new configuration. If you want to
-        # check the status of the agent, rerun this command without
-        # parameters.
-
-          # sudo yorokobi
-
-        # Visit yorkobi.com for more information.
-
-    # If the agent wasn't running, here is the following printed message.
-
-        # Configuration file was successfully updated.
-
-        # The agent doesn't appear online but don't worry, it will pick the
-        # new configuration next next it runs. Perhaps you want to type.
-
-          # sudo systemctl start yorokobi-agent
-
-        # Visit yorkobi.com for more information.
-
-    # Long description.
-    # """
-
-    # print("Configuration file was successfully updated.")
-
-    # if is_agent_reloaded:
-        # print("The agent just reloaded the new configuration. If you want to check the status of the agent, rerun this command without parameters.")
-    # else:
-        # print("The agent doesn't appear online but don't worry, it will pick the new configuration next next it runs. Perhaps you want to type.")
-
-    # command = "sudo yorokobi" if is_agent_reloaded else "sudo systemctl start yorokobi-agent"
-    # print(command)
-
-    # print("All set! Enjoy some peace of mind. Your backups will begin soon.")
-    # print("Visit yorkobi.com for more information.")
-
-def configure_agent(config_filename, config, change_license, reconfigure_dbs):
+def configure_agent(config, change_license, reconfigure_dbs):
     """ Identify the agent and/or configure the database.
 
     Identify (or re-identify) the agent and/or configure (or
@@ -312,59 +269,48 @@ def configure_agent(config_filename, config, change_license, reconfigure_dbs):
     if reconfigure_dbs:
         configure_databases(config)
 
-    # ask if the user wants to the save the new settings, and update the
-    # configuration file if yes
+    # ask the user to confirm the new configuration, and send it to the
+    # agent so it can reload
     save_settings = input("Save settings? [y/N]")
-    are_settings_saved = False
-
-    if save_settings == 'y' or save_settings == 'Y':
+    
+    if save_settings.lower() == 'y':
         try:
-            config_file = config_filename.open('w')
+            has_agent_reloaded = request_reload_configuration(config, TIMEOUT)
         except:
-            print("Failed to save the configuration file; cannot open it in write mode")
+            print("The agent doesn't appear running; ensure the agent is started.")
             exit(1)
 
-        try:
-            save_configuration(config_file, config)
-        except:
-            print("Failed to save the configuration file")
+        # print a message saying that the agent failed to reload the
+        # configuration and suggest the user to contact the support
+        if not has_agent_reloaded:
+            print("The agent failed to pick up the new configuration.")
             exit(1)
 
-        config_file.close()
+        message = """Configuration was successfully updated.
 
-        are_settings_saved = True
+The agent just reloaded the new configuration. If you want to check
+the status of the agent, re-run this command without parameters.
 
-    # reload the agent to pick the new configuration file, and print an
-    # update message
-    if are_settings_saved:
-        has_agent_reloaded = True
+    sudo yorokobi
 
-        try:
-            loaded_config = request_reload_configuration(1000)
+Visit yorokobi.com for more information.
+        """
 
-            # TODO: check if the returned loaded config by the agent is
-            # the same as the one we have
-            # assert loaded_config == config
-
-        except TimeoutError:
-            has_agent_reloaded = False
-
-        print_configuration_file_updated(has_agent_reloaded)
+        print(message)
 
 def show_agent_status():
-    print("show-agent-status")
     is_agent_connected = True
 
     try:
-        status = request_get_status(1000)
+        status = request_status(1000)
     except TimeoutError:
         is_agent_connected = False
 
     if is_agent_connected:
-        print("display agent status")
-        print(status)
+        next_backup_time = status['next-backup-time']
+        print("The agent is running. Next backup is scheduled to run in {0}".format(next_backup_time))
     else:
-        print("print that the agent isn't connected or couldn't be reached")
+        print("The agent isn't running.")
 
 def reset_agent():
-    pass
+    raise NotImplementedError

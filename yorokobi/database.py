@@ -6,6 +6,7 @@
 #
 # Written by Jonathan De Wachter <dewachter.jonathan@gmail.com>, May 2018
 
+import inquirer
 import psycopg2
 
 def configure_databases(config):
@@ -24,7 +25,7 @@ def configure_databases(config):
     """
 
     is_connected_to_postgresql = False
-    
+
     while not is_connected_to_postgresql:
         username = input("PostgreSQL Username: ")
         password = input("PostgreSQL Password: ")
@@ -44,61 +45,59 @@ def configure_databases(config):
             port = int(port)
 
         try:
-            # FIXME: use hostname and port
-            connection = psycopg2.connect(dbname='postgres', user=username, password=password)
+            connection = psycopg2.connect(dbname='postgres', user=username, password=password, host=host, port=str(port))
             is_connected_to_postgresql = True
         except:
-            print("Unable to connect to the PostgreSQL server for some reasons") # TODO: DETERMINE WHY
-            
-        if not is_connected_to_postgresql:                    
+            print("Unable to connect to the PostgreSQL server for some reasons.")
+
+        if not is_connected_to_postgresql:
             retry = input("Retry? [Y/n]")
-            
+
             if retry != 'y' and retry != 'Y':
                 return []
 
     selected_dbs = select_databases(connection)
     connection.close()
-    
+
     config['postgresql-user']     = username
     config['postgresql-password'] = password
     config['postgresql-host']     = host
     config['postgresql-port']     = port
-    
+
     config['selected-dbs'] = selected_dbs
 
 def select_databases(connection):
+    """ Brief description.
+
+    Long description.
+    """
 
     cursor = connection.cursor()
     cursor.execute("SELECT datname FROM pg_database WHERE datistemplate = false;")
 
-    foo = cursor.fetchall()
-    var = tuple(bar[0] for bar in foo)
+    response = cursor.fetchall()
+    databases = tuple(row[0] for row in response)
 
-    print(var)
+    print("Move with UP and DOWN keywords.")
+    print("Press SPACE to select and uncheck and ENTER to continue.", end='\n\n')
 
-    # print("Move with UP and DOWN keywords.")
-    # print("Press SPACE to select and uncheck and ENTER to continue.")
-
-
-    choices = ('All databases', *var)
-    print(choices)
-
-
-    import os
-    import sys
-    import re
-    sys.path.append(os.path.realpath('.'))
-    from pprint import pprint
-
-    import inquirer
+    choices = ('All databases', *databases)
 
     questions = [
         inquirer.Checkbox('databases',
-                      message="What size do you need?",
+                      message="Select the databases you want to backup",
                       choices=choices,
                   ),
     ]
 
     answers = inquirer.prompt(questions)
 
-    pprint(answers)
+    # if the list is empty, returns None, if the list contains
+    # 'All databases', return 'all', or return the actual list of
+    # selected DBs
+    if not answers['databases']:
+        return None
+    elif 'All databases' in answers['databases']:
+        return 'all'
+    else:
+        return answers['databases']

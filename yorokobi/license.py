@@ -6,10 +6,13 @@
 #
 # Written by Jonathan De Wachter <dewachter.jonathan@gmail.com>, May 2018
 
+import socket
 import zmq
-from yorokobi.configuration import BACKUP_HOSTNAME, BACKUP_PORT
+import requests
+from requests.auth import HTTPBasicAuth
+from yorokobi.agent import YOROKOBI_URL
 
-def register_agent(license_key):
+def register_agent(license_key, account_password):
     """ Register the agent with a given license key.
     
     This function connnect to the backup server in order to register 
@@ -17,28 +20,28 @@ def register_agent(license_key):
     agent identifier is returned, otherwise an explicit error message 
     is returned.
     """
-    
-    context = zmq.Context.instance()
 
-    socket_address = 'tcp://{0}:{1}'.format(BACKUP_HOSTNAME, BACKUP_PORT)
-    socket = context.socket(zmq.REQ)
+	# Examples of responses (accepted vs refused):
+	#
+	# 200 OK
+	# {"id":"CCMgmS99JTV7s98kc","hostname":"vulpix","ip_address":"2a02:a03f:5248:9e00:b10c:56da:a766:f7f3","active":true}  
+	#
+	# 401 Unauthorized
+	# { "errors": [{ "type": "access_denied", "title": "HTTP Basic: Access denied." }] }
 
-    socket.connect(socket_address)
+    auth = HTTPBasicAuth(license_key, account_password)
 
-    request = {
-        'type' : 'register-agent',
-        'license-key' : license_key,
-    }
-    
-    socket.send_json(request)
-    response = socket.recv_json()
+    params = {
+        'hostname'  : socket.gethostname(),
+        'ip_address': socket.gethostbyname(socket.gethostname())
+	}
 
-    socket.disconnect(socket_address)
+    response = requests.post(YOROKOBI_URL + "/v1/agents", data=params, auth=auth)
 
-    if response['type'] == 'accepted':
-        return response['agent-id'], None
-    elif response['type'] == 'refused':
-        return None, response['reason']
+    if response.status_code == 200:
+        return response.json['id'], None
+    else:
+        return None, response.text
 
 def identify_agent(config):
     """ Enter license command-line work-flow.
@@ -61,10 +64,7 @@ def identify_agent(config):
     Long description.
     """
 
-    print(config['license-key'])
-    print(config['agent-id'])
-    assert config['license-key'] == None
-    assert config['agent-id']    == None
+    assert config['license-key'] == None or config['agent-id']    == None
 
     is_agent_identified = False
 
@@ -72,9 +72,12 @@ def identify_agent(config):
         # show enter license key message, and get user input
         print("Enter your license Key below.")
         license_key = input("License key: ")
-
+        
+        print("now enter your account password.")
+        account_password = input("Password: ")
+        
         print("Please wait, attempting to authenticate your license...")
-        agent_id, error_message = register_agent(license_key)
+        agent_id, error_message = register_agent(license_key, account_password)
             
         if agent_id:
             # show license is valid message
