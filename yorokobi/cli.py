@@ -185,3 +185,11 @@ def backup_now():
     else:
         print("Backup request isn't accepted; for reason X")
 
+@click.command()
+def unregister_agent():
+    """ Brief description.
+    
+    Long description.
+    """
+    
+    pass

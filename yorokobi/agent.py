@@ -6,13 +6,11 @@
 #
 # Written by Jonathan De Wachter <dewachter.jonathan@gmail.com>, May 2018
 
+import time
 import schedule
 import zmq
-
-YOROKOBI_URL = 'http://api.yorokobi.co/v1/agents'
-AGENT_ADDRESS = 'tcp://0.0.0.0:12996'
-TIMEOUT = 100
-
+import requests
+from requests.auth import HTTPBasicAuth
 from yorokobi.configuration import load_configuration, save_configuration
 from yorokobi.license import identify_agent
 from yorokobi.database import configure_databases
@@ -45,7 +43,7 @@ class Agent:
     def __init__(self, config, config_filename, logger):
         self.config = config
         self.config_filename = config_filename
-        
+
         self.logger = logger
 
         self.running = False
@@ -63,7 +61,7 @@ class Agent:
         return self.config
 
     def reload_configuration(self, config):
-    
+
         def perform_config_change(new_config):
           # TODO: do config update according to current agent state (for
           # example, what if the agent is in the middle of a backup, what
@@ -99,12 +97,12 @@ class Agent:
         context = zmq.Context()
 
         self.socket = context.socket(zmq.REP)
-        self.socket.bind(AGENT_ADDRESS)
+        self.socket.bind("tcp://0.0.0.0:12996")
 
         self.setup_scheduler()
         self.loop()
 
-        self.socket.unbind(AGENT_ADDRESS)
+        self.socket.unbind("tcp://0.0.0.0:12996")
 
     def setup_scheduler(self):
         def scheduler_job():
@@ -142,28 +140,29 @@ class Agent:
         # if the ongoing backup is terminated, send a terminate backup
         # signal to the backup server
         if not self.backup.is_alive():
-            request = {}
-            request['type'] = 'terminate-backup'
-            request['agent-id'] = self.config['agent-id']
-            request['backup-id'] = self.backup.backup_id
 
-            
-            # do request
-            # ----------
-            # auth = HTTPBasicAuth(license_key, account_password)
-            # 
-            # params = {
-            #     'hostname'  : socket.gethostname(),
-            #     'ip_address': socket.gethostbyname(socket.gethostname())
-            # }
-            # 
-            # response = requests.post(YOROKOBI_URL + "/v1/agents", data=params, auth=auth)
-            # 
+            license_key = config['license-key']
+            account_password = config['account-password']
+            agent_id = self.config['agent-id']
+
+            auth = HTTPBasicAuth(license_key, account_password)
+
+            params = {
+                'agent_id'  : agent_id,
+                'hostname'  : socket.gethostname(),
+                'ip_address': socket.gethostbyname(socket.gethostname())
+            }
+
+            response = requests.post("https://api.yorokobi.co/v1/backups", data=params, auth=auth)
+            print(response.status_code)
+            print(response.json)
+
+            #
             # if response.status_code == 200:
             #     return response.json['id'], None
             # else:
             #     return None, response.text
-            
+
             self.external_socket.send_json(request)
             response = self.external_socket.recv_json()
 
@@ -186,23 +185,32 @@ class Agent:
         #if self.config['agent-id'] == None:
         #   print("the agent isn't identified and therefore can't initiate backup")
         #   return False
-        self.config['agent-id'] = 42
 
-        request = {}
-        request['type'] = 'initiate-backup'
-        request['agent-id'] = self.config['agent-id']
+        license_key = self.config['license-key']
+        # account_password = self.config['account-password']
+        account_password = 'Nympij-hojbeg-cyxgi5'
+        agent_id = self.config['agent-id']
 
-        self.external_socket.send_json(request)
+        print("about to initiate a backup")
+        print(agent_id)
+        print(license_key)
+        print(account_password)
 
-        if self.external_socket.poll(10000) & zmq.POLLIN: #TODO: replace timeout value
-            response = self.external_socket.recv_json()
-        else:
-            raise TimeoutError
+        auth = HTTPBasicAuth(license_key, account_password)
 
-        response_type = response['type']
+        import socket
+        params = {
+            'agent_id'  : agent_id,
+            'hostname'  : socket.gethostname(),
+            'ip_address': socket.gethostbyname(socket.gethostname())
+        }
+
+        response = requests.post("https://api.yorokobi.co/v1/backups", data=params, auth=auth)
+        print(response.status_code)
+        print(response.json)
 
         # don't intiate a backup if the backup server didn't accept it
-        if response_type == 'refused':
+        if response.status_code != 200:
             return False
 
         print('aaffa')
@@ -249,6 +257,8 @@ class Agent:
             self.process_scheduler()
             self.process_backup()
 
+            time.sleep(0.01)
+
     def terminate(self):
         self.running = False
 
@@ -272,10 +282,10 @@ def configure_agent(config, change_license, reconfigure_dbs):
     # ask the user to confirm the new configuration, and send it to the
     # agent so it can reload
     save_settings = input("Save settings? [y/N]")
-    
+
     if save_settings.lower() == 'y':
         try:
-            has_agent_reloaded = request_reload_configuration(config, TIMEOUT)
+            has_agent_reloaded = request_reload_configuration(config, 100)
         except:
             print("The agent doesn't appear running; ensure the agent is started.")
             exit(1)

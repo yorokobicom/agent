@@ -10,21 +10,20 @@ import socket
 import zmq
 import requests
 from requests.auth import HTTPBasicAuth
-from yorokobi.agent import YOROKOBI_URL
 
 def register_agent(license_key, account_password):
     """ Register the agent with a given license key.
-    
-    This function connnect to the backup server in order to register 
-    an agent with a license key. If the operation is successful, an 
-    agent identifier is returned, otherwise an explicit error message 
+
+    This function connnect to the backup server in order to register
+    an agent with a license key. If the operation is successful, an
+    agent identifier is returned, otherwise an explicit error message
     is returned.
     """
 
 	# Examples of responses (accepted vs refused):
 	#
 	# 200 OK
-	# {"id":"CCMgmS99JTV7s98kc","hostname":"vulpix","ip_address":"2a02:a03f:5248:9e00:b10c:56da:a766:f7f3","active":true}  
+	# {"id":"CCMgmS99JTV7s98kc","hostname":"vulpix","ip_address":"2a02:a03f:5248:9e00:b10c:56da:a766:f7f3","active":true}
 	#
 	# 401 Unauthorized
 	# { "errors": [{ "type": "access_denied", "title": "HTTP Basic: Access denied." }] }
@@ -36,7 +35,7 @@ def register_agent(license_key, account_password):
         'ip_address': socket.gethostbyname(socket.gethostname())
 	}
 
-    response = requests.post(YOROKOBI_URL + "/v1/agents", data=params, auth=auth)
+    response = requests.post("https://api.yorokobi.co/v1/agents", data=params, auth=auth)
 
     if response.status_code == 200:
         return response.json['id'], None
@@ -72,22 +71,22 @@ def identify_agent(config):
         # show enter license key message, and get user input
         print("Enter your license Key below.")
         license_key = input("License key: ")
-        
+
         print("now enter your account password.")
         account_password = input("Password: ")
-        
+
         print("Please wait, attempting to authenticate your license...")
         agent_id, error_message = register_agent(license_key, account_password)
-            
+
         if agent_id:
             # show license is valid message
             print("Success. Your license key worked fine :-)")
-            
-            # update the config values with valid license key and the 
+
+            # update the config values with valid license key and the
             # returned agent identifier
             config['license-key'] = license_key
             config['agent-id']    = agent_id
-            
+
             is_agent_identified = True
 
         else:

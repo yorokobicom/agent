@@ -25,16 +25,16 @@ def compute_dump_database_command(foo, bar):
     command = 'pg_dump'
 
     command_args = []
-    # command_args.append('--host={0}'.format(host))
-    # command_args.append('--port={0}'.format(port))
-    command_args.append('--username={0}'.format(name))
-
-    # if password:
-        # command_args.append('--password={0}'.format(password))
-    # else:
-        # command_args.append('--no-password')
-
-    command_args.append('--dbname={0}'.format(db))
+    # # command_args.append('--host={0}'.format(host))
+    # # command_args.append('--port={0}'.format(port))
+    # command_args.append('--username={0}'.format(name))
+    #
+    # # if password:
+    #     # command_args.append('--password={0}'.format(password))
+    # # else:
+    #     # command_args.append('--no-password')
+    #
+    # command_args.append('--dbname={0}'.format(db))
 
     return [command, *commands]
 
@@ -59,7 +59,7 @@ class Backup(Thread):
 
         self.dump_databases(temporary_dir)
         self.create_tarball(temporary_dir)
-        self.send_tarball_over(temporary_dir)
+        self.send_tarball(temporary_dir)
 
         temporary_dir.cleanup()
 
@@ -81,14 +81,14 @@ class Backup(Thread):
 
         selected_dbs = self.config['selected-dbs']
 
-        # dbs, host, port, name, password = None
-        #
+
         # compute dirs
         temporary_dir = PosixPath(temporary_dir.name)
         assert temporary_dir.exists() and temporary_dir.is_dir()
 
         databases_directory = temporary_dir / 'backups' / 'databases' / 'PostgreSQL'
         databases_directory.mkdir(parents=True, exist_ok=False)
+
         #
         # # connect to the database and dump the selected databases
         # for database in selected_dbs:
@@ -116,11 +116,11 @@ class Backup(Thread):
         tarball.add(tarball_source, arcname="backups")
         tarball.close()
 
-    def send_tarball_over(self, temporary_dir):
+    def send_tarball(self, temporary_dir):
         tarball_name = compute_tarball_name()
 
         temporary_dir = PosixPath(temporary_dir.name)
         tarbal_filename = temporary_dir / tarball_name
 
-        client = Client('127.0.0.1', self.remofile_port, self.remofile_token)
+        client = Client('18.191.159.255', self.remofile_port, self.remofile_token)
         client.upload_file(tarbal_filename, '/')

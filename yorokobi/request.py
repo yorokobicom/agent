@@ -8,7 +8,6 @@
 
 from enum import IntEnum
 import zmq
-from yorokobi.agent import AGENT_ADDRESS
 
 Request = IntEnum('Request', [
     'GET_CONFIGURATION',
@@ -21,7 +20,7 @@ def do_request(request_type, timeout):
     context = zmq.Context.instance()
     socket = context.socket(zmq.REQ)
 
-    socket.connect(AGENT_ADDRESS)
+    socket.connect("tcp://0.0.0.0:12996")
     socket.send_pyobj(request_type)
 
     if socket.poll(timeout) & zmq.POLLIN:
@@ -29,7 +28,7 @@ def do_request(request_type, timeout):
     else:
         raise TimeoutError
 
-    socket.disconnect(AGENT_ADDRESS)
+    socket.disconnect("tcp://0.0.0.0:12996")
 
     return response
 
