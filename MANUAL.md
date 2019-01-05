@@ -11,8 +11,8 @@ installation to configuration and triggering a back-up.
 - Configuration and log file
 - Alternative installation
 
-The **Yorokobi Agent** is an daemon process that runs in the background to
-perform automatic back-ups.
+The agent is a system service that performs backups, encrypt and transfer them
+to Yorokobi backup servers.
 
 ## Agent installation
 

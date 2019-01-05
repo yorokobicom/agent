@@ -7,6 +7,7 @@
 # Written by Jonathan De Wachter <dewachter.jonathan@gmail.com>, May 2018
 
 import time
+import socket
 import schedule
 import zmq
 import requests
@@ -141,8 +142,9 @@ class Agent:
         # signal to the backup server
         if not self.backup.is_alive():
 
-            license_key = config['license-key']
-            account_password = config['account-password']
+            print("about to terminate the backup")
+            license_key = self.config['license-key']
+            account_password = self.config['account-password']
             agent_id = self.config['agent-id']
 
             auth = HTTPBasicAuth(license_key, account_password)
@@ -153,20 +155,12 @@ class Agent:
                 'ip_address': socket.gethostbyname(socket.gethostname())
             }
 
-            response = requests.post("https://api.yorokobi.co/v1/backups", data=params, auth=auth)
+            response = requests.post("https://api.yorokobi.com/v1/backups", data=params, auth=auth)
             print(response.status_code)
-            print(response.json)
+            print(response.json())
+            print(response.text)
 
-            #
-            # if response.status_code == 200:
-            #     return response.json['id'], None
-            # else:
-            #     return None, response.text
-
-            self.external_socket.send_json(request)
-            response = self.external_socket.recv_json()
-
-            assert response['type'] == 'accepted'
+            assert response.status_code == 200
 
             self.backup = None
 
@@ -187,43 +181,33 @@ class Agent:
         #   return False
 
         license_key = self.config['license-key']
-        # account_password = self.config['account-password']
-        account_password = 'Nympij-hojbeg-cyxgi5'
+        account_password = self.config['account-password']
         agent_id = self.config['agent-id']
-
-        print("about to initiate a backup")
-        print(agent_id)
-        print(license_key)
-        print(account_password)
 
         auth = HTTPBasicAuth(license_key, account_password)
 
-        import socket
         params = {
             'agent_id'  : agent_id,
             'hostname'  : socket.gethostname(),
             'ip_address': socket.gethostbyname(socket.gethostname())
         }
 
-        response = requests.post("https://api.yorokobi.co/v1/backups", data=params, auth=auth)
-        print(response.status_code)
-        print(response.json)
+        # example of response: {"id":"xgh6VzTVsWRa9BnOUqaL","hostname":null,"port":75725,"token":"xgh6VzTVsWRa9BnOUqaL","state":"initial"}
+        response = requests.post("https://api.yorokobi.com/v1/backups", data=params, auth=auth)
 
         # don't intiate a backup if the backup server didn't accept it
         if response.status_code != 200:
+            print("backup refused")
             return False
 
-        print('aaffa')
-        assert response_type == 'accepted'
+        backup_id      = response.json()['id']
+        remofile_port  = response.json()['port']
+        remofile_token = response.json()['token']
 
-        backup_id      = response['backup-id']
-        remofile_port  = response['remofile-port']
-        remofile_token = response['remofile-token']
-        print('bbb')
         self.backup = Backup(remofile_port, remofile_token, self.config)
-        print('ccc')
+
+        print("backup {0} is starting".format(backup_id))
         self.backup.start()
-        print('ddd')
 
         return True
 
@@ -236,16 +220,24 @@ class Agent:
         self.backup.cancel_and_wait()
 
         # send a terminate backup signal to the backup server
-        request = {}
-        request['type'] == 'cancel-backup'
-        request['agent-id'] == self.config['agent-id']
-        request['backup-id'] == self.backup.backup_id
+        license_key = self.config['license-key']
+        account_password = self.config['account-password']
+        agent_id = self.config['agent-id']
 
-        self.external_socket.send_json(request) # TODO: do timeout
-        response = self.external_socket.recv_json()
+        print("about to cancel a backup")
+        print(agent_id)
+        print(license_key)
+        print(account_password)
 
-        response_type = response['type']
-        assert response_type == 'accepted'
+        auth = HTTPBasicAuth(license_key, account_password)
+
+        response = requests.delete("https://api.yorokobi.com/v1/backups/" + self.backup.backup_id, auth=auth)
+        print(response.status_code)
+        print(response.json)
+
+        # example of response: {"id":"xgh6VzTVsWRa9BnOUqaL","hostname":null,"port":75725,"token":"xgh6VzTVsWRa9BnOUqaL","state":"canceled"}
+
+        assert response.status == 200
 
         self.backup = None
 

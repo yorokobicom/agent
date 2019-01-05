@@ -14,6 +14,7 @@ from configparser import ConfigParser
 #
 #     [general]
 #     license_key = M8ddTKx_87Iw2_EPvR9FD8Ol8_MGrqEe0LaGorsAh9Q
+#     account-password = Nympij-hojbeg-cyxgi5
 #     agent-id = CCMgmS99JTV7s98kc
 #
 #     postgresql-user = sonkun
@@ -39,6 +40,7 @@ def get_default_configuration():
     config = {}
 
     config['license-key'] = None
+    config['account-password'] = None
     config['agent-id']    = None
 
     config['postgresql-user']     = 'postgres'
@@ -67,6 +69,11 @@ def load_configuration(config_file):
         config['license-key'] = None
     else:
         config['license-key'] = configparser['agent']['license-key']
+
+    if configparser['agent']['account-password'] == 'unset':
+        config['account-password'] = None
+    else:
+        config['account-password'] = configparser['agent']['account-password']
 
     if configparser['agent']['agent-id'] == 'unset':
         config['agent-id'] = None
@@ -105,6 +112,11 @@ def save_configuration(config_file, config):
         configparser['agent']['license-key'] = 'unset'
     else:
         configparser['agent']['license-key'] = str(config['license-key'])
+
+    if not config['agent-id']:
+        configparser['agent']['account-password'] = 'unset'
+    else:
+        configparser['agent']['account-password'] = str(config['account-password'])
 
     if not config['agent-id']:
         configparser['agent']['agent-id'] = 'unset'

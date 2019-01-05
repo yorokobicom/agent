@@ -35,10 +35,10 @@ def register_agent(license_key, account_password):
         'ip_address': socket.gethostbyname(socket.gethostname())
 	}
 
-    response = requests.post("https://api.yorokobi.co/v1/agents", data=params, auth=auth)
+    response = requests.post("https://api.yorokobi.com/v1/agents", data=params, auth=auth)
 
     if response.status_code == 200:
-        return response.json['id'], None
+        return response.json()['id'], None
     else:
         return None, response.text
 
@@ -72,7 +72,7 @@ def identify_agent(config):
         print("Enter your license Key below.")
         license_key = input("License key: ")
 
-        print("now enter your account password.")
+        print("Now enter your account password.")
         account_password = input("Password: ")
 
         print("Please wait, attempting to authenticate your license...")
@@ -85,6 +85,7 @@ def identify_agent(config):
             # update the config values with valid license key and the
             # returned agent identifier
             config['license-key'] = license_key
+            config['account-password'] = account_password
             config['agent-id']    = agent_id
 
             is_agent_identified = True
