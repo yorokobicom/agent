@@ -10,21 +10,15 @@ transfer them to Yorokobi backup servers.
 Download the OS package from the official website, and install it using one of
 the following commands.
 
-```
-sudo dpkg -i yorokobi-agent.deb # for Debian/Ubuntu
-sudo yum install yorokobi-agent.rpm # on Fedora
-```
+### Ubuntu/Debian
 
-Start the agent and make it start at boot time with the following commands.
+    sudo dpkg -i yorokobi-agent.deb
 
-```
-sudo systemctl start yorokobi-agent
-sudo systemctl enable yorokobi-agent
-```
+### Fedora
 
-You must configure the agent.
+    sudo yum install yorokobi-agent.rpm # on Fedora
 
-# Configuration
+## Configuration
 
 Configuration is typically done by typing `yorokobi` which will ask for the
 **license key**. After that, you're given the ability
