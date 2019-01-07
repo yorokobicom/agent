@@ -26,8 +26,8 @@ You must configure the agent.
 
 # Configuration
 
-Configuration is typically done by typing `yorkobi` which will ask for the
-**license key** and **account password**. After that, you're given the ability
+Configuration is typically done by typing `yorokobi` which will ask for the
+**license key**. After that, you're given the ability
 to configure the PostgreSQL databases to work with.
 
 Additionally, you can also configure the agent manually by editing its
