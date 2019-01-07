@@ -295,7 +295,7 @@ the status of the agent, re-run this command without parameters.
 
     sudo yorokobi
 
-Visit yorokobi.com for more information.
+Visit www.yorokobi.com for more information.
         """
 
         print(message)
