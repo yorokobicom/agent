@@ -25,4 +25,4 @@ Configuration is typically done by typing `yorokobi` which will ask for the
 to configure the PostgreSQL databases to work with.
 
 Additionally, you can also configure the agent manually by editing its
-configuration file located in `/etc/yorkobi.conf`.
+configuration file located in `/etc/yorokobi.conf`.
