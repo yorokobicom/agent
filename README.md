@@ -12,11 +12,11 @@ the following commands.
 
 ### Ubuntu/Debian
 
-    sudo dpkg -i yorokobi-agent.deb
+    sudo dpkg -i yorokobi.deb
 
 ### Fedora
 
-    sudo yum install yorokobi-agent.rpm # on Fedora
+    sudo yum install yorokobi.rpm
 
 ## Configuration
 
