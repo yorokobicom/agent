@@ -1,4 +1,4 @@
-# Copyright (C) LIVE INTERACTIVE SA - All Rights Reserved
+# Copyright (C) Yorokobi, Inc. - All Rights Reserved
 # Yorokobi Agent - Automatic database backups for web applications
 #
 # The source code is proprietary and confidential. Unauthorized copying
