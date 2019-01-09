@@ -28,6 +28,7 @@ def print_logo():
   `/___/> \ \/___/   \/_/  \/___/    \/_/\/_/ \/___/    \/___/    \/_/
      /\___/
      \/__/
+
     """
 
     print(logo)
@@ -158,6 +159,8 @@ def yorokobi_cli(change_license, reconfigure_dbs, reset_all):
     # if the agent isn't fully configured (or requested to be
     # reconfigured), configure it, otherwise show the agent status
     if change_license or reconfigure_dbs:
+        print_logo()
+        print("Welcome to Yorokobi. For more information please visit www.yorokobi.com.", end="\n\n")
         configure_agent(config, change_license, reconfigure_dbs)
     else:
         show_agent_status()
