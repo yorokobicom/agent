@@ -6,6 +6,8 @@
 #
 # Written by Jonathan De Wachter <dewachter.jonathan@gmail.com>, May 2018
 
+import unittest
+
 class TestAgent(unittest.TestCase):
     """ Test the protocol.
 
@@ -14,14 +16,14 @@ class TestAgent(unittest.TestCase):
 
     def setUp(self):
         # set up db
-        # 
+        #
         pass
 
     def tearDown(self):
         pass
 
     def test_(self): pass
-        
+
     def test_foobar(self):
         """ Test foobar.
 

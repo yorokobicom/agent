@@ -11,7 +11,7 @@ import zmq
 import requests
 from requests.auth import HTTPBasicAuth
 
-def register_agent(license_key, account_password):
+def register_agent(license_key):
     """ Register the agent with a given license key.
 
     This function connnect to the backup server in order to register
@@ -28,7 +28,7 @@ def register_agent(license_key, account_password):
 	# 401 Unauthorized
 	# { "errors": [{ "type": "access_denied", "title": "HTTP Basic: Access denied." }] }
 
-    auth = HTTPBasicAuth(license_key, account_password)
+    auth = HTTPBasicAuth(license_key, '')
 
     params = {
         'hostname'  : socket.gethostname(),
@@ -72,11 +72,8 @@ def identify_agent(config):
         print("Enter your license Key below.")
         license_key = input("License key: ")
 
-        print("Now enter your account password.")
-        account_password = input("Password: ")
-
         print("Please wait, attempting to authenticate your license...")
-        agent_id, error_message = register_agent(license_key, account_password)
+        agent_id, error_message = register_agent(license_key)
 
         if agent_id:
             # show license is valid message
@@ -85,7 +82,6 @@ def identify_agent(config):
             # update the config values with valid license key and the
             # returned agent identifier
             config['license-key'] = license_key
-            config['account-password'] = account_password
             config['agent-id']    = agent_id
 
             is_agent_identified = True
