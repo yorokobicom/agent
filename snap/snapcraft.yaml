@@ -1,0 +1,10 @@
+
+  name: yorokobi
+  version: '0.1.0'
+  summary: Automatic PostgreSQL backups for web apps.
+  description: |
+    The agent is a system service that performs backups, encrypt and 
+    transfer them to Yorokobi backup servers.
+
+  grade: devel # must be 'stable' to release into candidate/stable channels
+  confinement: devmode # use 'strict' once you have the right plugs and slots
