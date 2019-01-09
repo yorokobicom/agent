@@ -144,10 +144,9 @@ class Agent:
 
             print("about to terminate the backup")
             license_key = self.config['license-key']
-            account_password = self.config['account-password']
             agent_id = self.config['agent-id']
 
-            auth = HTTPBasicAuth(license_key, account_password)
+            auth = HTTPBasicAuth(license_key, '')
 
             params = {
                 'agent_id'  : agent_id,
@@ -181,10 +180,9 @@ class Agent:
         #   return False
 
         license_key = self.config['license-key']
-        account_password = self.config['account-password']
         agent_id = self.config['agent-id']
 
-        auth = HTTPBasicAuth(license_key, account_password)
+        auth = HTTPBasicAuth(license_key, '')
 
         params = {
             'agent_id'  : agent_id,
@@ -221,15 +219,13 @@ class Agent:
 
         # send a terminate backup signal to the backup server
         license_key = self.config['license-key']
-        account_password = self.config['account-password']
         agent_id = self.config['agent-id']
 
         print("about to cancel a backup")
         print(agent_id)
         print(license_key)
-        print(account_password)
 
-        auth = HTTPBasicAuth(license_key, account_password)
+        auth = HTTPBasicAuth(license_key, '')
 
         response = requests.delete("https://api.yorokobi.com/v1/backups/" + self.backup.backup_id, auth=auth)
         print(response.status_code)
