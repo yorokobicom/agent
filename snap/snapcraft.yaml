@@ -6,7 +6,7 @@ description: |
   transfer them to Yorokobi backup servers.
 
 grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: classic
+confinement: strict
 
 apps:
   yorokobi:
