@@ -29,6 +29,7 @@ setup(
         yorokobid=yorokobi.cli:run_agent
         yorokobi=yorokobi.cli:yorokobi_cli
         yorokobi-backup=yorokobi.cli:backup_now
+        yorokobi-unregister=yorokobi.cli:unregister_agent
     ''',
     test_suite="tests"
 )

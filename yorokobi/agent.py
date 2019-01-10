@@ -94,6 +94,31 @@ class Agent:
         print('backup-now: accepted')
         return accepted
 
+    def unregister_me(self):
+        print("about to unregister the agent")
+        license_key = self.config['license-key']
+        agent_id = self.config['agent-id']
+
+        if not agent_id:
+            return False
+
+        auth = HTTPBasicAuth(license_key, '')
+
+        params = {
+            'agent_id'  : agent_id,
+            'hostname'  : socket.gethostname(),
+            'ip_address': socket.gethostbyname(socket.gethostname())
+        }
+
+        response = requests.post("https://api.yorokobi.com/v1/unregister", data=params, auth=auth)
+
+        assert response.status_code == 200
+
+        self.config['license-key'] = None
+        self.config['agent-id'] = None
+
+        return True
+
     def run(self):
         context = zmq.Context()
 
@@ -127,6 +152,8 @@ class Agent:
             response = self.get_status()
         elif request['type'] == Request.BACKUP_NOW:
             response = self.backup_now()
+        elif request['type'] == Request.UNREGISTER_AGENT:
+            response = self.unregister_me()
 
         self.socket.send_pyobj(response)
 

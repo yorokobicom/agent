@@ -190,9 +190,22 @@ def backup_now():
 
 @click.command()
 def unregister_agent():
-    """ Brief description.
+    """ Unregister an agent.
 
-    Long description.
+    Long descirption.
     """
 
-    pass
+    # 1. the agent could not be reached
+    # 2. the backup has been accepted and initated (show stats)
+    # 3. the backup fails to start (show reason, include 'not configured agentn')
+
+    try:
+        accepted = request_backup_now(TIMEOUT)
+    except TimeoutError:
+        print("The agent doesn't appear running; ensure the agent is started.")
+        exit(1)
+
+    if accepted:
+        print("Backup request accepted; starting now.")
+    else:
+        print("Backup request isn't accepted; for reason X")
