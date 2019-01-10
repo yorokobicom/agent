@@ -38,6 +38,7 @@ parts:
       - requests
     stage-packages:
       - libpq-dev
+      - libzmq3-dev
     source: .
 
 environment:
