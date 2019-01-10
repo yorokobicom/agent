@@ -1,0 +1,9 @@
+git+git://github.com/yorokobicom/remofile@master#egg=remofile
+psycopg2-binary
+click
+pyzmq
+schedule
+inquirer
+pexpect
+setuptools
+requests
