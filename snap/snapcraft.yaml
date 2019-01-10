@@ -1,36 +1,45 @@
-
 name: yorokobi
 version: git
 summary: Automatic PostgreSQL backups for web apps.
 description: |
-  The agent is a system service that performs backups, encrypt and 
+  The agent is a system service that performs backups, encrypt and
   transfer them to Yorokobi backup servers.
 
 grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: devmode # use 'strict' once you have the right plugs and slots
+confinement: classic
 
 apps:
   yorokobi:
     command: yorokobi
+  backup:
+    command: yorokobi-backup
+  remofile:
+    command: remofile
+  daemon:
+    command: yorokobid
+    daemon: simple
+    restart-condition: always
 
 parts:
+  remofile:
+    plugin: python
+    source: https://github.com/yorokobicom/remofile.git
+
   yorokobi:
     plugin: python
-    python-version: python3
     python-packages:
       - psycopg2-binary
       - click
       - pyzmq
       - schedule
       - inquirer
+      - pexpect
+      - setuptools
       - requests
     stage-packages:
-      - build-essential
-      - devscripts
       - libpq-dev
-      - fakeroot
-      - python3-setuptools
     source: .
-  remofile:
-    plugin: python
-    source: https://github.com/yorokobicom/remofile.git
+
+environment:
+  LANG: C.UTF-8
+  LC_ALL: C.UTF-8
