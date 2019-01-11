@@ -36,7 +36,7 @@ parts:
       - pexpect
       - setuptools
       - requests
-    stage-packages:
+    build-packages:
       - libpq-dev
       - libzmq3-dev
     source: .
