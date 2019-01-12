@@ -11,8 +11,6 @@ confinement: strict
 apps:
   yorokobi:
     command: yorokobi
-  backup:
-    command: yorokobi-backup
   remofile:
     command: remofile
   daemon:
