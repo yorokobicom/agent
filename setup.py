@@ -27,9 +27,7 @@ setup(
     entry_points='''
         [console_scripts]
         yorokobid=yorokobi.cli:run_agent
-        yorokobi=yorokobi.cli:yorokobi_cli
-        yorokobi-backup=yorokobi.cli:backup_now
-        yorokobi-unregister=yorokobi.cli:unregister_agent
+        yorokobi=yorokobi.cli:cli
     ''',
     test_suite="tests"
 )

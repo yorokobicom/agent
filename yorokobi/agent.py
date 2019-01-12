@@ -95,7 +95,6 @@ class Agent:
         return accepted
 
     def unregister_me(self):
-        print("about to unregister the agent")
         license_key = self.config['license-key']
         agent_id = self.config['agent-id']
 
@@ -103,14 +102,7 @@ class Agent:
             return False
 
         auth = HTTPBasicAuth(license_key, '')
-
-        params = {
-            'agent_id'  : agent_id,
-            'hostname'  : socket.gethostname(),
-            'ip_address': socket.gethostbyname(socket.gethostname())
-        }
-
-        response = requests.post("https://api.yorokobi.com/v1/unregister", data=params, auth=auth)
+        response = requests.delete("https://api.yorokobi.com/v1/agents/{0}".format(agent_id), auth=auth)
 
         assert response.status_code == 200
 

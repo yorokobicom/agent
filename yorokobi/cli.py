@@ -15,7 +15,7 @@ from yorokobi.configuration import load_configuration, save_configuration
 from yorokobi.agent import Agent
 from yorokobi.agent import configure_agent, show_agent_status, reset_agent
 from yorokobi.request import request_configuration, request_reload_configuration
-from yorokobi.request import request_backup_now
+from yorokobi.request import request_backup_now, request_unregister_agent
 
 def print_logo():
     logo = """
@@ -33,11 +33,15 @@ def print_logo():
 
     print(logo)
 
-TIMEOUT = 100
+TIMEOUT = 10000
 
 LOG_ERROR_MSG           = "An error occured during the setup of the logger phase."
 CONFIGURATION_ERROR_MSG = "An error occured during the loading configuration file phase."
 CONNECTION_ERROR_MSG    = "Foobar"
+
+@click.group()
+def cli():
+    pass
 
 @click.command()
 @click.option('--conf', default=os.path.join(os.getcwd(), 'yorokobi.conf'))
@@ -107,7 +111,7 @@ def run_agent(conf, log):
     # log 'successfully stopped agent' message
     logger.warning('The Yorokobi agent has succesfully stopped')
 
-@click.command()
+@cli.command()
 @click.option('--change-license')
 @click.option('--reconfigure-dbs')
 @click.option('--reset-all')
@@ -165,7 +169,7 @@ def yorokobi_cli(change_license, reconfigure_dbs, reset_all):
     else:
         show_agent_status()
 
-@click.command()
+@click.command("backup")
 def backup_now():
     """ Initiate a backup request.
 
@@ -188,24 +192,23 @@ def backup_now():
     else:
         print("Backup request isn't accepted; for reason X")
 
-@click.command()
+@click.command("unregister")
 def unregister_agent():
     """ Unregister an agent.
 
     Long descirption.
     """
-
-    # 1. the agent could not be reached
-    # 2. the backup has been accepted and initated (show stats)
-    # 3. the backup fails to start (show reason, include 'not configured agentn')
-
+    
     try:
-        accepted = request_backup_now(TIMEOUT)
+        accepted = request_unregister_agent(TIMEOUT)
     except TimeoutError:
         print("The agent doesn't appear running; ensure the agent is started.")
         exit(1)
 
     if accepted:
-        print("Backup request accepted; starting now.")
+        print("Agent was successfully unregistered")
     else:
-        print("Backup request isn't accepted; for reason X")
+        print("Agent isn't registered yet.")
+
+cli.add_command(backup_now)
+cli.add_command(unregister_agent)
