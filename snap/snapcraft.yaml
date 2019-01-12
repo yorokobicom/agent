@@ -24,6 +24,10 @@ parts:
   remofile:
     plugin: python
     source: https://github.com/yorokobicom/remofile.git
+    python-packages:
+      - pyzmq    
+    build-packages:
+      - libzmq3-dev    
 
   yorokobi:
     plugin: python
