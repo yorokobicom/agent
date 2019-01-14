@@ -110,8 +110,10 @@ class Agent:
 
         assert response.status_code == 200
 
+        # update the current configuration
         self.config['license-key'] = None
         self.config['agent-id'] = None
+        self.reload_configuration(self.config)
 
         return True
 
