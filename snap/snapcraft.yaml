@@ -25,7 +25,9 @@ parts:
     python-packages:
       - pyzmq    
     build-packages:
-      - libzmq3-dev    
+      - libzmq3-dev
+    stage:
+     - "-lib/python3.5/site-packages/zmq/"
 
   yorokobi:
     plugin: python
