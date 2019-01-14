@@ -56,7 +56,8 @@ def configure_databases(config):
             if retry != 'y' and retry != 'Y':
                 return []
 
-    selected_dbs = select_databases(connection)
+    databases = get_databases(connection)
+    selected_dbs = select_databases(databases)
     connection.close()
 
     config['postgresql-user']     = username
@@ -66,17 +67,18 @@ def configure_databases(config):
 
     config['selected-dbs'] = selected_dbs
 
-def select_databases(connection):
-    """ Brief description.
-
-    Long description.
-    """
-
+def get_databases(connection):
     cursor = connection.cursor()
     cursor.execute("SELECT datname FROM pg_database WHERE datistemplate = false;")
 
     response = cursor.fetchall()
-    databases = tuple(row[0] for row in response)
+    return tuple(row[0] for row in response)
+
+def select_databases(databases):
+    """ Brief description.
+
+    Long description.
+    """
 
     print("Move with UP and DOWN keywords.")
     print("Press SPACE to select and uncheck and ENTER to continue.", end='\n\n')

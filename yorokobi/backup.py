@@ -12,10 +12,14 @@ from threading import Thread
 from tempfile import TemporaryDirectory
 from remofile import Client
 
+import psycopg2
+
 import subprocess
 import tarfile
 
 import pexpect
+
+from yorokobi.database import get_databases
 
 def compute_tarball_name():
     current_time = datetime.now()
@@ -46,23 +50,22 @@ def compute_dump_command(database, username, password, hostname, port):
     if password:
         password_arg = '--password'
 
-    command = 'pg_dump {0} {1} {2} {3} {4}'.format(host_arg, port_arg, username_arg, password_arg, database)
+    command = 'pg_dump -Fc {0} {1} {2} {3} {4}'.format(host_arg, port_arg, username_arg, password_arg, database)
 
     print(command)
     return command
 
 def dump_database(command, database_filename, postgresql_password):
-    with database_filename.open('w') as database_file:
-      child = pexpect.spawn(command)
+    with database_filename.open('wb') as database_file:
+      child = pexpect.spawn(command, timeout=None)
 
       if postgresql_password:
         child.expect('Password')
         child.sendline(postgresql_password)
 
-      print(child.read())
       database_file.write(child.read())
 
-    database_file = database_filename.open('r')
+    database_file = database_filename.open('rb')
     print(database_file.read())
 
 class Backup(Thread):
@@ -121,22 +124,20 @@ class Backup(Thread):
 
         # connect to the database and dump the selected databases
         if selected_dbs == 'all':
-            database_filename = databases_directory / 'all.sql'
-            command = compute_dumpall_command(postgresql_user, postgresql_password, postgresql_host, postgresql_port)
-            dump_database(command, database_filename, postgresql_password)
+            try:
+                connection = psycopg2.connect(dbname='postgres', user=postgresql_user, password=postgresql_password, host=postgresql_host, port=str(postgresql_port))
+            except:
+                print("Unable to connect to the PostgreSQL server for some reasons.")
+                exit(1)
+
+            databases = get_databases(connection)
         else:
-            for db in selected_dbs:
-                database_filename = databases_directory / (db + '.sql')
-                command = compute_dump_command(postgresql_user, postgresql_password, postgresql_host, postgresql_port)
-                dump_database(command, database_filename, postgresql_password)
+            databases = selected_dbs
 
-
-        for database in selected_dbs:
-            print(database_filename)
-
+        for database in databases:
+            database_filename = databases_directory / (database + '.sql')
             command = compute_dump_command(database, postgresql_user, postgresql_password, postgresql_host, postgresql_port)
-            print(command)
-
+            dump_database(command, database_filename, postgresql_password)
 
     def create_tarball(self, temporary_dir):
         # compute tarball name (something like this '2018.05.04.14.00.03.tar.gz')
