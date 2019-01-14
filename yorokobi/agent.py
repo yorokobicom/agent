@@ -91,14 +91,18 @@ class Agent:
 
     def backup_now(self):
         accepted = self.initiate_backup()
-        print('backup-now: accepted')
         return accepted
 
     def unregister_me(self):
         license_key = self.config['license-key']
         agent_id = self.config['agent-id']
 
+        # can't unregister an agent that isn't registered
         if not agent_id:
+            return False
+
+        # can't unregister an agent in the middle of a backup
+        if self.backup:
             return False
 
         auth = HTTPBasicAuth(license_key, '')
