@@ -152,7 +152,7 @@ def yorokobi_cli(change_license, reconfigure_dbs, reset_all):
     # check if the agent still needs to be configured, or if it's
     # explicitely requested to be reconfigured
     def is_agent_identified(config):
-        return config['license-key'] != None and config['account-password'] != None and config['agent-id'] != None
+        return config['license-key'] != None and config['agent-id'] != None
 
     def is_database_configured(config):
         return config['selected-dbs'] != None
