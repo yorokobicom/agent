@@ -58,6 +58,9 @@ class Agent:
 #        if self.backup:
 #            self.backup.cancel_and_wait()
 
+    def is_registered(self):
+        return self.config['license-key'] and self.config['agent-id']
+
     def get_configuration(self):
         return self.config
 
@@ -83,32 +86,76 @@ class Agent:
         return self.config
 
     def get_status(self):
-        response = {}
+        logger.info("Retrieving status..")
 
-        response['next-backup-time'] = schedule.next_run()
+        license_key = self.config['license-key']
 
-        return response
+        if license_key:
+            logger.info("Detected license key was: {0}".format(license_key))
+
+            agent_id = self.config['agent-id']
+            assert agent_id != None
+
+            logger.info("Detected agent ID was: {0}".format(agent_id))
+
+            last_backup_time = 0
+            next_backup_time = schedule.next_run()
+            logger.info("Detected next run is for {0}".format(next_backup_time))
+
+        else:
+            logger.info("No license was detected")
+
+            agent_id = None
+            last_backup_time = 0
+            next_backup_time = 0
+
+        return license_key, agent_id, last_backup_time, next_backup_time
 
     def backup_now(self):
+        logger.info("A manual backup is requested")
+
         accepted = self.initiate_backup()
+
+        if accepted:
+            logger.info("The backup request was accepted")
+        else:
+            logger.info("The backup was NOT accepted")
+
         return accepted
 
     def unregister_me(self):
-        license_key = self.config['license-key']
-        agent_id = self.config['agent-id']
+        """ Unregister the agent.
+
+        Long descripiton here.
+        """
+
+        self.logger.info("An unregister agent request was detected")
 
         # can't unregister an agent that isn't registered
-        if not agent_id:
+        if not self.is_registered():
+            self.logger.info("Can't unregister the agent if it's not registered")
             return False
 
         # can't unregister an agent in the middle of a backup
         if self.backup:
+            self.logger.info("Can't unregister the agent when in the middle of a backup")
             return False
+
+        license_key = self.config['license-key']
+        agent_id = self.config['agent-id']
+        assert license_key != None and agent_id != None
+
+        # send a unregister agent request to Yorokobi server
+        # example of response: None
+        self.logger.info("Sending an unregister agent request to Yorokobi server")
 
         auth = HTTPBasicAuth(license_key, '')
         response = requests.delete("https://api.yorokobi.com/v1/agents/{0}".format(agent_id), auth=auth)
 
-        assert response.status_code == 200
+        if response.status_code != 200:
+            self.logger.info("Got a negative response from server; an error occured during the unregistration")
+            # todo: log error message returned from server
+            return False
 
         # update the current configuration
         self.config['license-key'] = None
@@ -142,6 +189,8 @@ class Agent:
         except zmq.Again:
             return
 
+        logger.info("The agent received a {0} request".format(str(request)))
+
         if request['type'] == Request.GET_CONFIGURATION:
             response = self.get_configuration()
         elif request['type'] == Request.RELOAD_CONFIGURATION:
@@ -159,17 +208,30 @@ class Agent:
         schedule.run_pending()
 
     def process_backup(self):
+        """ Process the ongoing backup.
+
+        Check if the ongoing backup is terminated. If it is, a signal is
+        sent to the backup server and the agent is revert to normal
+        state.
+        """
+
         # nothing to do if there is no ongoing backup
         if not self.backup:
+            self.logger.verbose("No ongoing backup detected; skip processing backup")
             return
 
         # if the ongoing backup is terminated, send a terminate backup
         # signal to the backup server
         if not self.backup.is_alive():
+            self.logger.info("The ongoing backup is detected as terminated; terminating the backup")
 
-            print("about to terminate the backup")
+            # send a terminate backup signal to the backup server
+            # example of response: unknown
+            self.logger.info("Sending a terminate backup request to Yorokobi server")
+
             license_key = self.config['license-key']
             agent_id = self.config['agent-id']
+            assert license_key != None and agent_id != None
 
             auth = HTTPBasicAuth(license_key, '')
 
@@ -179,34 +241,45 @@ class Agent:
                 'ip_address': socket.gethostbyname(socket.gethostname())
             }
 
+            self.logger.info("Request data is {0}".format(str(params)))
             response = requests.post("https://api.yorokobi.com/v1/backups", data=params, auth=auth)
-            print(response.status_code)
-            print(response.json())
-            print(response.text)
 
-            assert response.status_code == 200
+            self.logger.info("Response status is {0}".format(response.status_code))
+            self.logger.info("Response data is:")
+            self.logger.info(response.json())
 
+            if not response.status == 200:
+                self.logger.error("Got a negative response from server; don't know what to do!")
+
+            self.logger.info("Clean up and remove the backup thread")
             self.backup = None
 
     def initiate_backup(self):
-        # attempt to start a backup; it fails if the agent is in the
-        # middle of a back-up or if the back-up server doesn't accept it
+        """ Initiate a backup.
 
-        # don't initiate a backup if already in the middle of one
-        # (should have been cancelled prior to calling this function)
-        if self.backup:
+        This method attempts to start a backup. It fails if the agent
+        isn't registered or if the agent is the middle of a backup or if
+        the backup server doens't accept it.
+        """
+
+        # don't initiate a backup if the agent isn't registered
+        if not self.is_registered():
+            self.logger.info("Can't initiate a backup because the agent isn't registered")
             return False
 
-        ## TODO (rework this): the agent should be identified prior to
-        ## calling this function
-        ## assert self.config['agent-id'] != None
-        #if self.config['agent-id'] == None:
-        #   print("the agent isn't identified and therefore can't initiate backup")
-        #   return False
+        # don't initiate a backup if already in the middle of a backup
+        if self.backup:
+            self.logger.info("Can't initiate a backup because the agent is already in the middle of a backup")
+            return False
 
         license_key = self.config['license-key']
         agent_id = self.config['agent-id']
 
+        assert license_key != None and agent_id != None
+
+        # send a backup request to the Yorokobi server
+        # example of response: {"id":"xgh6VzTVsWRa9BnOUqaL","hostname":null,"port":75725,"token":"xgh6VzTVsWRa9BnOUqaL","state":"initial"})
+        self.logger.info("Sending a backup request to Yorokobi server")
         auth = HTTPBasicAuth(license_key, '')
 
         params = {
@@ -215,51 +288,74 @@ class Agent:
             'ip_address': socket.gethostbyname(socket.gethostname())
         }
 
-        # example of response: {"id":"xgh6VzTVsWRa9BnOUqaL","hostname":null,"port":75725,"token":"xgh6VzTVsWRa9BnOUqaL","state":"initial"}
+        self.logger.info("Request data is {0}".format(str(params)))
         response = requests.post("https://api.yorokobi.com/v1/backups", data=params, auth=auth)
+
+        self.logger.info("Response status is {0}".format(response.status_code))
+        self.logger.info("Response data is:")
+        self.logger.info(response.json())
 
         # don't intiate a backup if the backup server didn't accept it
         if response.status_code != 200:
-            print("backup refused")
+            self.logger.info("Got a negative response from server; backup was either refused or an error occured")
+            # todo: log error message returned from server
             return False
 
+        self.logger.info("Got a positive response from server; backup was accepted")
+
+        # initiate the backup
+        self.logger.info("Reading response to retrieve the backup ID, the remofile port and the remofile token")
         backup_id      = response.json()['id']
         remofile_port  = response.json()['port']
         remofile_token = response.json()['token']
 
-        self.backup = Backup(remofile_port, remofile_token, self.config)
+        self.logger.info("Backup ID is {0}".format(backup_id))
+        self.logger.info("Remofile port is {0}".format(remofile_port))
+        self.logger.info("Remofile token is {0}".format(remofile_token0)
 
-        print("backup {0} is starting".format(backup_id))
+        self.logger.info("Starting a backup in external thread".format(backup_id))
+        self.backup = Backup(remofile_port, remofile_token, self.config)
         self.backup.start()
 
         return True
 
     def cancel_ongoing_backup(self):
+        """ Cancel the ongoing backup.
+
+        This method forces termination of an ongoing backup (if any). It
+        destroys the underlying backup thread and send a signal to the
+        server before putting the agent back to normal state.
+        """
+
         # do nothing if there is no ongoing backup
         if self.backup:
+            self.logger.info("Can't cancel an ongoing backup if there is none")
             return
 
         # send signal to thread and wait until it terminates
+        self.logger.info("Terminating the backup thread")
         self.backup.cancel_and_wait()
+        self.logger.info("Backup thread terminated")
 
         # send a terminate backup signal to the backup server
+        # example of response: {"id":"xgh6VzTVsWRa9BnOUqaL","hostname":null,"port":75725,"token":"xgh6VzTVsWRa9BnOUqaL","state":"canceled"}
+        self.logger.info("Sending a cancel backup request to Yorokobi server")
+
         license_key = self.config['license-key']
         agent_id = self.config['agent-id']
-
-        print("about to cancel a backup")
-        print(agent_id)
-        print(license_key)
+        assert license_key != None and agent_id != None
 
         auth = HTTPBasicAuth(license_key, '')
-
         response = requests.delete("https://api.yorokobi.com/v1/backups/" + self.backup.backup_id, auth=auth)
-        print(response.status_code)
-        print(response.json)
 
-        # example of response: {"id":"xgh6VzTVsWRa9BnOUqaL","hostname":null,"port":75725,"token":"xgh6VzTVsWRa9BnOUqaL","state":"canceled"}
+        self.logger.info("Response status is {0}".format(response.status_code))
+        self.logger.info("Response data is:")
+        self.logger.info(response.json())
 
-        assert response.status == 200
+        if not response.status == 200:
+            self.logger.error("Got a negative response from server; don't know what to do!")
 
+        self.logger.info("Clean up and remove the backup thread")
         self.backup = None
 
     def loop(self):
@@ -330,10 +426,11 @@ def show_agent_status():
         is_agent_connected = False
 
     if is_agent_connected:
-        next_backup_time = status['next-backup-time']
+        license_key, agent_id, last_backup_time, next_backup_time = status
+
         print("The agent is running. Next backup is scheduled to run in {0}".format(next_backup_time))
     else:
-        print("The agent isn't running.")
+        print("The agent isn't running. Please start it first.")
 
 def reset_agent():
     raise NotImplementedError
