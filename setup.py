@@ -22,7 +22,9 @@ setup(
         'pyzmq',
         'schedule',
         'inquirer',
-        'requests'
+        'requests',
+        'remofile',
+        'pexpect'
     ],
     entry_points='''
         [console_scripts]
