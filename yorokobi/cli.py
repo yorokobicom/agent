@@ -101,7 +101,9 @@ def run_agent(conf, log):
     logger.addHandler(console_handler)
 
     # print startup message
-    print("The Yorokobi agent is starting with configuration file '{0}' and log file {1}".format(conf, log))
+    print("The Yorokobi agent is starting.", end="\n\n")
+    print("Configuration file is '{0}'".format(conf))
+    print("Log file is '{0}'".format(log), end="\n\n")
 
     # create the agent instance and start its main loop
     agent = Agent(config, config_filename, logger)
@@ -111,11 +113,11 @@ def run_agent(conf, log):
     # log 'successfully stopped agent' message
     logger.warning('The Yorokobi agent has succesfully stopped')
 
-@cli.command()
+@cli.command("setup")
 @click.option('--change-license')
 @click.option('--reconfigure-dbs')
 @click.option('--reset-all')
-def yorokobi_cli(change_license, reconfigure_dbs, reset_all):
+def setup_agent(change_license, reconfigure_dbs, reset_all):
     """ Configure the agent or show its status.
 
     This command starts the command-line configuration process of the
@@ -192,13 +194,17 @@ def backup_now():
     else:
         print("Backup request isn't accepted; for reason X")
 
+
+@click.command("register")
+def unregister_agent():
+    """ Register an agent. """
+
+    pass
+
 @click.command("unregister")
 def unregister_agent():
-    """ Unregister an agent.
+    """ Unregister an agent. """
 
-    Long descirption.
-    """
-    
     try:
         accepted = request_unregister_agent(TIMEOUT)
     except TimeoutError:
@@ -210,5 +216,13 @@ def unregister_agent():
     else:
         print("Agent isn't registered yet.")
 
+@click.command("status")
+def get_agent_status():
+    """ Get the status of the agent. """
+
+    show_agent_status()
+
+cli.add_command(setup_agent)
 cli.add_command(backup_now)
+cli.add_command(register_agent)
 cli.add_command(unregister_agent)
