@@ -160,5 +160,5 @@ class Backup(Thread):
         self.logger.info("Sending '{0}' to {1} using Remofile protocol with port {2} and token '{3}'...".format(
             tarbal_filename, "backup.yorokobi.com", self.remofile_port, self.remofile_token))
 
-        client = Client('18.216.146.107', self.remofile_port, self.remofile_token)
+        client = Client('backup.yorokobi.com', self.remofile_port, self.remofile_token)
         client.upload_file(tarbal_filename, '/')
