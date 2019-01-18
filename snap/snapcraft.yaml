@@ -38,8 +38,6 @@ parts:
       - pexpect
       - setuptools
       - requests
-      - pexpect
-      - remofile
     build-packages:
       - libpq-dev
       - libzmq3-dev
