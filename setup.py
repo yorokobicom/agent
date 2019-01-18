@@ -24,7 +24,7 @@ setup(
         'inquirer',
         'requests',
         'pexpect'
-    ]
+    ],
     entry_points='''
         [console_scripts]
         yorokobid=yorokobi.cli:run_agent
