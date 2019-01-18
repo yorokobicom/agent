@@ -8,7 +8,6 @@
 
 import os.path
 from pathlib import PosixPath
-import logging
 import click
 from yorokobi.configuration import get_default_filename, get_default_configuration
 from yorokobi.configuration import load_configuration, save_configuration
@@ -65,10 +64,11 @@ def run_agent(conf, log):
     connection with the backup server can't be etablished.
     """
 
+    config_filename = PosixPath(conf)
+    log_filename = PosixPath(log)
+
     # load the configuration file (use default configuration values if
     # it doesn't exist)
-    config_filename = PosixPath(conf)
-
     if config_filename.exists():
         config_file = config_filename.open('r')
         config = load_configuration(config_file)
@@ -79,39 +79,17 @@ def run_agent(conf, log):
         save_configuration(config_file, config)
         config_file.close()
 
-    # configure the logger with the log file
-    logger = logging.getLogger('yorokobi')
-
-    try:
-        file_handler = logging.FileHandler(log)
-    except IOError:
-        print(LOG_ERROR_MSG)
-        exit(1)
-
-    file_handler.setLevel(logging.DEBUG)
-
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.ERROR)
-
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    file_handler.setFormatter(formatter)
-    console_handler.setFormatter(formatter)
-
-    logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
-
     # print startup message
     print("The Yorokobi agent is starting.", end="\n\n")
-    print("Configuration file is '{0}'".format(conf))
-    print("Log file is '{0}'".format(log), end="\n\n")
+    print("Configuration file is '{0}'".format(str(config_filename)))
+    print("Log file is '{0}'".format(str(log_filename)), end="\n\n")
 
     # create the agent instance and start its main loop
-    agent = Agent(config, config_filename, logger)
-
+    agent = Agent(config, config_filename, log_filename)
     agent.run()
 
-    # log 'successfully stopped agent' message
-    logger.warning('The Yorokobi agent has succesfully stopped')
+    # print 'successfully stopped agent' message
+    print('The Yorokobi agent has succesfully stopped')
 
 @cli.command("setup")
 @click.option('--change-license')
@@ -196,7 +174,7 @@ def backup_now():
 
 
 @click.command("register")
-def unregister_agent():
+def register_agent():
     """ Register an agent. """
 
     pass
@@ -226,3 +204,4 @@ cli.add_command(setup_agent)
 cli.add_command(backup_now)
 cli.add_command(register_agent)
 cli.add_command(unregister_agent)
+cli.add_command(get_agent_status)

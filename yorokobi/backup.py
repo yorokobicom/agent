@@ -10,15 +10,11 @@ from pathlib import PosixPath
 from datetime import datetime
 from threading import Thread
 from tempfile import TemporaryDirectory
-from remofile import Client
-
-import psycopg2
-
 import subprocess
 import tarfile
-
 import pexpect
-
+import psycopg2
+from remofile import Client
 from yorokobi.database import get_databases
 
 def compute_tarball_name():
@@ -65,9 +61,6 @@ def dump_database(command, database_filename, postgresql_password):
 
       database_file.write(child.read())
 
-    database_file = database_filename.open('rb')
-    print(database_file.read())
-
 class Backup(Thread):
     """ Perform a backup in an external thread.
 
@@ -76,16 +69,20 @@ class Backup(Thread):
 
     """
 
-    def __init__(self, port, token, config):
+    def __init__(self, port, token, config, logger):
         Thread.__init__(self)
 
         self.config = config
+        self.logger = logger
 
         self.remofile_port  = port
         self.remofile_token = token
-
+        
     def run(self):
-        print("backup with port {0} and token {1}".format(self.remofile_port, self.remofile_token))
+        self.logger.info("Starting backup now")
+        self.logger.info("Remofile port: {0}".format(self.remofile_port))
+        self.logger.info("Remofile token: {0}".format(self.remofile_token))
+        
         temporary_dir = TemporaryDirectory()
 
         self.dump_databases(temporary_dir)
@@ -93,7 +90,8 @@ class Backup(Thread):
         self.send_tarball(temporary_dir)
 
         temporary_dir.cleanup()
-        print("backup is finished")
+        
+        self.logger.info("Backup successfully finished")
 
     def cancel_and_wait(self):
         pass # to be implemented
@@ -120,7 +118,7 @@ class Backup(Thread):
         databases_directory = temporary_dir / 'backups' / 'databases' / 'PostgreSQL'
         databases_directory.mkdir(parents=True, exist_ok=False)
 
-        print(selected_dbs)
+        self.logger.info(str(selected_dbs))
 
         # connect to the database and dump the selected databases
         if selected_dbs == 'all':
@@ -152,13 +150,15 @@ class Backup(Thread):
         tarball.close()
 
     def send_tarball(self, temporary_dir):
+        self.logger.info("Sending the tarball")
+        
         tarball_name = compute_tarball_name()
 
         temporary_dir = PosixPath(temporary_dir.name)
         tarbal_filename = temporary_dir / tarball_name
 
-        print("sending file1")
+        self.logger.info("Sending '{0}' to {1} using Remofile protocol with port {2} and token '{3}'...".format(
+            tarbal_filename, "backup.yorokobi.com", self.remofile_port, self.remofile_token))
+
         client = Client('18.216.146.107', self.remofile_port, self.remofile_token)
-        print("sending file2")
         client.upload_file(tarbal_filename, '/')
-        print("sending file3")

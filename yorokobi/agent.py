@@ -7,6 +7,7 @@
 # Written by Jonathan De Wachter <dewachter.jonathan@gmail.com>, May 2018
 
 import time
+import logging
 import socket
 import schedule
 import zmq
@@ -41,11 +42,33 @@ class Agent:
     When there is an ongoing backup, an external thread in launched.
     """
 
-    def __init__(self, config, config_filename, logger):
+    def __init__(self, config, config_filename, log_filename):
         self.config = config
-        self.config_filename = config_filename
 
-        self.logger = logger
+        self.config_filename = config_filename
+        self.log_filename = log_filename
+
+        # configure the logger with the log file
+        self.logger = logging.getLogger('yorokobi')
+        self.logger.setLevel(logging.DEBUG)
+
+        try:
+            file_handler = logging.FileHandler(log_filename)
+        except IOError:
+            print("Can't create the agent log file")
+            exit(1)
+
+        file_handler.setLevel(logging.DEBUG)
+
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.ERROR)
+
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_handler.setFormatter(formatter)
+        console_handler.setFormatter(formatter)
+
+        self.logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
 
         self.running = False
 
@@ -60,6 +83,9 @@ class Agent:
 
     def is_registered(self):
         return self.config['license-key'] and self.config['agent-id']
+
+    def are_databases_configured(self):
+        return self.config['selected-dbs'] != None
 
     def get_configuration(self):
         return self.config
@@ -86,24 +112,24 @@ class Agent:
         return self.config
 
     def get_status(self):
-        logger.info("Retrieving status..")
+        self.logger.info("Retrieving status..")
 
         license_key = self.config['license-key']
 
         if license_key:
-            logger.info("Detected license key was: {0}".format(license_key))
+            self.logger.info("Detected license key was: {0}".format(license_key))
 
             agent_id = self.config['agent-id']
             assert agent_id != None
 
-            logger.info("Detected agent ID was: {0}".format(agent_id))
+            self.logger.info("Detected agent ID was: {0}".format(agent_id))
 
             last_backup_time = 0
             next_backup_time = schedule.next_run()
-            logger.info("Detected next run is for {0}".format(next_backup_time))
+            self.logger.info("Detected next run is for {0}".format(next_backup_time))
 
         else:
-            logger.info("No license was detected")
+            self.logger.info("No license was detected")
 
             agent_id = None
             last_backup_time = 0
@@ -112,14 +138,14 @@ class Agent:
         return license_key, agent_id, last_backup_time, next_backup_time
 
     def backup_now(self):
-        logger.info("A manual backup is requested")
+        self.logger.info("A manual backup is requested")
 
         accepted = self.initiate_backup()
 
         if accepted:
-            logger.info("The backup request was accepted")
+            self.logger.info("The backup request was accepted")
         else:
-            logger.info("The backup was NOT accepted")
+            self.logger.info("The backup was NOT accepted")
 
         return accepted
 
@@ -165,6 +191,8 @@ class Agent:
         return True
 
     def run(self):
+        self.logger.info("Agent has successfull started")
+
         context = zmq.Context()
 
         self.socket = context.socket(zmq.REP)
@@ -189,7 +217,7 @@ class Agent:
         except zmq.Again:
             return
 
-        logger.info("The agent received a {0} request".format(str(request)))
+        self.logger.info("The agent received a {0} request".format(str(request)))
 
         if request['type'] == Request.GET_CONFIGURATION:
             response = self.get_configuration()
@@ -217,7 +245,6 @@ class Agent:
 
         # nothing to do if there is no ongoing backup
         if not self.backup:
-            self.logger.verbose("No ongoing backup detected; skip processing backup")
             return
 
         # if the ongoing backup is terminated, send a terminate backup
@@ -267,6 +294,11 @@ class Agent:
             self.logger.info("Can't initiate a backup because the agent isn't registered")
             return False
 
+        # don't initiate a backup if databases aren't configured
+        if not self.are_databases_configured():
+            self.logger.info("Can't initiate a backup because no database was configured")
+            return False
+
         # don't initiate a backup if already in the middle of a backup
         if self.backup:
             self.logger.info("Can't initiate a backup because the agent is already in the middle of a backup")
@@ -311,10 +343,10 @@ class Agent:
 
         self.logger.info("Backup ID is {0}".format(backup_id))
         self.logger.info("Remofile port is {0}".format(remofile_port))
-        self.logger.info("Remofile token is {0}".format(remofile_token0)
+        self.logger.info("Remofile token is {0}".format(remofile_token))
 
         self.logger.info("Starting a backup in external thread".format(backup_id))
-        self.backup = Backup(remofile_port, remofile_token, self.config)
+        self.backup = Backup(remofile_port, remofile_token, self.config, self.logger)
         self.backup.start()
 
         return True
