@@ -1,5 +1,4 @@
 name: yorokobi
-base: core18
 version: git
 summary: Automatic PostgreSQL backups for web apps.
 description: |
@@ -18,6 +17,16 @@ apps:
     restart-condition: always
 
 parts:
+  remofile:
+    plugin: python
+    source: https://github.com/yorokobicom/remofile.git
+    python-packages:
+      - pyzmq    
+    build-packages:
+      - libzmq3-dev
+    stage:
+     - "-lib/python3.5/site-packages/zmq/"
+
   yorokobi:
     plugin: python
     python-packages:
