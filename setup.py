@@ -26,7 +26,6 @@ setup(
         'remofile',
         'pexpect'
     ],
-    dependency_links=['https://github.com/yorokobicom/remofile/tarball/master#egg=remofile']
     entry_points='''
         [console_scripts]
         yorokobid=yorokobi.cli:run_agent
