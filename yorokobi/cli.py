@@ -17,7 +17,7 @@ from yorokobi.request import request_configuration, request_reload_configuration
 from yorokobi.request import request_backup_now, request_unregister_agent
 
 def print_logo():
-    logo = """
+    logo = r"""
                                   __                 __
                                  /\ \               /\ \        __
  __  __      ___    _ __    ___  \ \ \/'\      ___  \ \ \____  /\_\
