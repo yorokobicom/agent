@@ -260,16 +260,11 @@ class Agent:
             agent_id = self.config['agent-id']
             assert license_key != None and agent_id != None
 
+            backup_id = self.backup.backup_id
+            
             auth = HTTPBasicAuth(license_key, '')
 
-            params = {
-                'agent_id'  : agent_id,
-                'hostname'  : socket.gethostname(),
-                'ip_address': socket.gethostbyname(socket.gethostname())
-            }
-
-            self.logger.info("Request data is {0}".format(str(params)))
-            response = requests.post("https://api.yorokobi.com/v1/backups", data=params, auth=auth)
+            response = requests.post("https://api.yorokobi.com/v1/backups/{0}/complete".format(backup_id), auth=auth)
 
             self.logger.info("Response status is {0}".format(response.status_code))
             self.logger.info("Response data is:")
@@ -346,7 +341,7 @@ class Agent:
         self.logger.info("Remofile token is {0}".format(remofile_token))
 
         self.logger.info("Starting a backup in external thread".format(backup_id))
-        self.backup = Backup(remofile_port, remofile_token, self.config, self.logger)
+        self.backup = Backup(backup_id, remofile_port, remofile_token, self.config, self.logger)
         self.backup.start()
 
         return True
