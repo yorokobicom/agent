@@ -168,7 +168,7 @@ def backup_now():
         exit(1)
 
     if accepted:
-        print("Backup request accepted; starting now.")
+        print("Backup started. Visit your dashboard at www.yorokobi.com to see its progress.")
     else:
         print("Backup request isn't accepted; for reason X")
 
