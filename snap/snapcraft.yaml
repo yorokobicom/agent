@@ -1,6 +1,5 @@
 name: yorokobi
 version: git
-base: core18
 summary: Automatic PostgreSQL backups for web apps.
 description: |
   The agent is a system service that performs backups, encrypt and
@@ -33,7 +32,10 @@ parts:
     build-packages:
       - libpq-dev
       - libzmq3-dev
-    source: .
+    stage-packages:
+      - python3
+      - python3-pip
+    source: .      
 
 environment:
   LANG: C.UTF-8
