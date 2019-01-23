@@ -1,4 +1,4 @@
-git+git://github.com/yorokobicom/remofile@master#egg=remofile
+remofile
 psycopg2-binary
 click
 pyzmq
