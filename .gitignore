@@ -1,4 +1,10 @@
+build
+dist
 parts
 prime
 snap/.snapcraft
 *.snap
+yorokobi.conf
+yorokobi.egg-info
+yorokobi.log
+yorokobi.txt

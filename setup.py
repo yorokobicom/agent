@@ -23,7 +23,8 @@ setup(
         'schedule',
         'inquirer',
         'requests',
-        'pexpect'
+        'pexpect',
+        'remofile'
     ],
     entry_points='''
         [console_scripts]
