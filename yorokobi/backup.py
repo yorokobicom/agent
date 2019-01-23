@@ -69,20 +69,22 @@ class Backup(Thread):
 
     """
 
-    def __init__(self, port, token, config, logger):
+    def __init__(self, backup_id, port, token, config, logger):
         Thread.__init__(self)
+
+        self.backup_id = backup_id
 
         self.config = config
         self.logger = logger
 
         self.remofile_port  = port
         self.remofile_token = token
-        
+
     def run(self):
         self.logger.info("Starting backup now")
         self.logger.info("Remofile port: {0}".format(self.remofile_port))
         self.logger.info("Remofile token: {0}".format(self.remofile_token))
-        
+
         temporary_dir = TemporaryDirectory()
 
         self.dump_databases(temporary_dir)
@@ -90,7 +92,7 @@ class Backup(Thread):
         self.send_tarball(temporary_dir)
 
         temporary_dir.cleanup()
-        
+
         self.logger.info("Backup successfully finished")
 
     def cancel_and_wait(self):
@@ -151,7 +153,7 @@ class Backup(Thread):
 
     def send_tarball(self, temporary_dir):
         self.logger.info("Sending the tarball")
-        
+
         tarball_name = compute_tarball_name()
 
         temporary_dir = PosixPath(temporary_dir.name)
