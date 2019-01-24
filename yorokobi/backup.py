@@ -17,6 +17,9 @@ import psycopg2
 from remofile import Client
 from yorokobi.database import get_databases
 
+import requests
+from requests.auth import HTTPBasicAuth
+
 def compute_tarball_name():
     current_time = datetime.now()
     tarball_name = current_time.strftime('%Y.%m.%d.%H.%m.%S') + '.tar.gz'
@@ -161,6 +164,22 @@ class Backup(Thread):
 
         self.logger.info("Sending '{0}' to {1} using Remofile protocol with port {2} and token '{3}'...".format(
             tarbal_filename, "backup.yorokobi.com", self.remofile_port, self.remofile_token))
+
+
+        waiting = False
+        while not waiting:
+            auth = HTTPBasicAuth(self.config['license-key'], '')
+            response = requests.get("https://api.yorokobi.com/v1/backups/" + self.backup_id, auth=auth)
+
+            self.logger.info(str(response.status_code))
+            self.logger.info(str(response.json()))
+            assert response.status_code == 200
+            waiting = response.json()['state'] == 'waiting'
+
+            import time
+            time.sleep(1)
+
+        self.logger.info("Remofile server is ready and waiting, proceed with uploading tarball...")
 
         client = Client('backup.yorokobi.com', self.remofile_port, self.remofile_token)
         client.upload_file(tarbal_filename, '/')
