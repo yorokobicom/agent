@@ -12,7 +12,9 @@ import click
 from yorokobi.configuration import get_default_filename, get_default_configuration
 from yorokobi.configuration import load_configuration, save_configuration
 from yorokobi.agent import Agent
-from yorokobi.agent import configure_agent, show_agent_status, reset_agent
+from yorokobi.agent import configure_agent, reset_agent
+from yorokobi.agent import show_agent_status
+from yorokobi.agent import show_agent_logs
 from yorokobi.request import request_configuration, request_reload_configuration
 from yorokobi.request import request_backup_now, request_unregister_agent
 
@@ -199,6 +201,12 @@ def get_agent_status():
     """ Get the status of the agent. """
 
     show_agent_status()
+
+@click.command("logs")
+def get_agent_status():
+    """ Get the logs of the agent. """
+
+    show_agent_logs()
 
 cli.add_command(setup_agent)
 cli.add_command(backup_now)

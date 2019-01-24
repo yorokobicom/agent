@@ -20,6 +20,7 @@ from yorokobi.backup import Backup
 from yorokobi.request import Request
 from yorokobi.request import request_reload_configuration
 from yorokobi.request import request_status
+from yorokobi.request import request_logs
 
 class Agent:
     """ Yorokobi agent running in the background.
@@ -42,18 +43,18 @@ class Agent:
     When there is an ongoing backup, an external thread in launched.
     """
 
-    def __init__(self, config, config_filename, log_filename):
+    def __init__(self, config, config_filename, logs_filename):
         self.config = config
 
         self.config_filename = config_filename
-        self.log_filename = log_filename
+        self.logs_filename = logs_filename
 
         # configure the logger with the log file
         self.logger = logging.getLogger('yorokobi')
         self.logger.setLevel(logging.DEBUG)
 
         try:
-            file_handler = logging.FileHandler(log_filename)
+            file_handler = logging.FileHandler(logs_filename)
         except IOError:
             print("Can't create the agent log file")
             exit(1)
@@ -112,6 +113,8 @@ class Agent:
         return self.config
 
     def get_status(self):
+        """ Compute the agent status. """
+
         self.logger.info("Retrieving status..")
 
         license_key = self.config['license-key']
@@ -136,6 +139,15 @@ class Agent:
             next_backup_time = 0
 
         return license_key, agent_id, last_backup_time, next_backup_time
+
+    def get_logs(self):
+        """ Compute the agent logs. """
+
+        logs_file = self.logs_filename.open('r')
+        logs = logs_file.readlines()
+        logs_file.close()
+
+        return logs
 
     def backup_now(self):
         self.logger.info("A manual backup is requested")
@@ -225,6 +237,8 @@ class Agent:
             response = self.reload_configuration(request['config'])
         elif request['type'] == Request.GET_STATUS:
             response = self.get_status()
+        elif request['type'] == Request.GET_LOGS:
+            response = self.get_logs()
         elif request['type'] == Request.BACKUP_NOW:
             response = self.backup_now()
         elif request['type'] == Request.UNREGISTER_AGENT:
@@ -261,7 +275,7 @@ class Agent:
             assert license_key != None and agent_id != None
 
             backup_id = self.backup.backup_id
-            
+
             auth = HTTPBasicAuth(license_key, '')
 
             response = requests.post("https://api.yorokobi.com/v1/backups/{0}/complete".format(backup_id), auth=auth)
@@ -456,6 +470,29 @@ def show_agent_status():
         license_key, agent_id, last_backup_time, next_backup_time = status
 
         print("The agent is running. Next backup is scheduled to run in {0}".format(next_backup_time))
+    else:
+        print("The agent isn't running. Please start it first.")
+
+def show_agent_logs():
+    def build_logs_page(logs):
+        logs_page = ""
+        for logs_line in logs:
+            logs_page = logs_page + logs_line
+
+        return logs_page
+
+    is_agent_connected = True
+
+    try:
+        logs = request_logs(1000)
+    except TimeoutError:
+        is_agent_connected = False
+
+    if is_agent_connected:
+        logs_page = build_logs_page(logs)
+
+        import pydoc
+        pydoc.pager(logs_page)
     else:
         print("The agent isn't running. Please start it first.")
 

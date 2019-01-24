@@ -13,6 +13,7 @@ Request = IntEnum('Request', [
     'GET_CONFIGURATION',
     'RELOAD_CONFIGURATION',
     'GET_STATUS',
+    'GET_LOGS',
     'BACKUP_NOW',
     'UNREGISTER_AGENT'
 ])
@@ -46,6 +47,9 @@ def request_reload_configuration(config, timeout):
 
 def request_status(timeout):
     return do_request({'type' : Request.GET_STATUS}, timeout)
+
+def request_logs(timeout):
+    return do_request({'type' : Request.GET_LOGS}, timeout)
 
 def request_backup_now(timeout):
     return do_request({'type' : Request.BACKUP_NOW}, timeout)
