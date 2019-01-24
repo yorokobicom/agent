@@ -1,0 +1,9 @@
+[Unit]
+Description=Yorokobi Agent
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/yorokobid --conf /etc/yorokobi.conf --log /var/log/yorokobi.log
+
+[Install]
+WantedBy=multi-user.target
