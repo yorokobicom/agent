@@ -1,11 +1,3 @@
-# Copyright (C) Yorokobi, Inc. - All Rights Reserved
-# Yorokobi Agent - Automatic database backups for web applications
-#
-# The source code is proprietary and confidential. Unauthorized copying
-# of this file, via any medium, is strictly prohibited.
-#
-# Written by Jonathan De Wachter <dewachter.jonathan@gmail.com>, May 2018
-
 import os.path
 from pathlib import PosixPath
 import click

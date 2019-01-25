@@ -20,14 +20,10 @@ In Ubuntu 16+ simply run the following from your terminal.
 
 For other Linux distributions [see instructions](https://docs.snapcraft.io/installing-snapd/6735).
 
-## Configure
+## Getting Started
 
 You need a [Yorokobi](https://www.yorokobi.com) account. 
 
-To configure simply run `yorokobi` and enter your Yorokobi 
-**license key**.
+To begin simply run `yorokobi setup` and follow the steps on screen.
 
-Follow the steps to configure the PostgreSQL databases to work with.
-
-Alternatively, you can configure the agent manually by editing its
-configuration file located in `/etc/yorokobi.conf`.
+Learn more about the [Yorokobi Agent](https://www.yorokobi.com/docs/agent).
