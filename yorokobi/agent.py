@@ -276,7 +276,7 @@ class Agent:
             self.logger.info("Response data is:")
             self.logger.info(response.json())
 
-            if not response.status == 200:
+            if not response.status_code == 200:
                 self.logger.error("Got a negative response from server; don't know what to do!")
 
             self.logger.info("Clean up and remove the backup thread")

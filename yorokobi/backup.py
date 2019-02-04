@@ -156,3 +156,4 @@ class Backup(Thread):
 
         client = Client('backup.yorokobi.com', self.remofile_port, self.remofile_token)
         client.upload_file(tarbal_filename, '/')
+        self.logger.info("back up done")
