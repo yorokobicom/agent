@@ -1,5 +1,5 @@
 name: yorokobi
-base: python36-jamesh
+base: core18
 version: git
 summary: Automatic PostgreSQL backups for web apps.
 description: |
