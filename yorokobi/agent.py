@@ -56,7 +56,7 @@ class Agent:
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.ERROR)
 
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter('[%(asctime)s][%(levelname)s] %(message)s')
         file_handler.setFormatter(formatter)
         console_handler.setFormatter(formatter)
 
