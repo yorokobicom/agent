@@ -24,7 +24,9 @@ setup(
         'inquirer',
         'requests',
         'pexpect',
-        'remofile'
+        'remofile',
+        'flask',
+        'pytest'
     ],
     entry_points='''
         [console_scripts]

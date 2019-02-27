@@ -7,4 +7,5 @@ inquirer
 pexpect
 setuptools
 requests
+flask
 pytest
