@@ -12,12 +12,12 @@ confinement: strict
 apps:
   yorokobi:
     command: yorokobi
-    plugs: [network]
+    plugs: [network, home]
   daemon:
     command: yorokobid
     daemon: simple
     restart-condition: always
-    plugs: [network, network-bind]
+    plugs: [network, network-bind, home]
 
 parts:
   yorokobi:
@@ -38,6 +38,7 @@ parts:
     stage-packages:
       - python3
       - python3-pip
+      - postgresql
     source: .      
 
 environment:
