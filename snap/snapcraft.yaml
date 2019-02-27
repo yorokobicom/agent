@@ -11,11 +11,13 @@ confinement: strict
 
 apps:
   yorokobi:
-    command: yorokobi  
+    command: yorokobi
+    plugs: [network]
   daemon:
     command: yorokobid
     daemon: simple
     restart-condition: always
+    plugs: [network, network-bind]
 
 parts:
   yorokobi:
