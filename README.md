@@ -2,7 +2,6 @@ Yorokobi Agent
 ==============
 
 [![Circle CI](https://img.shields.io/circleci/project/github/yorokobicom/agent/master.svg)](https://circleci.com/gh/yorokobicom/agent/tree/master)
-[![Snap Status](https://build.snapcraft.io/badge/yorokobicom/agent.svg)](https://build.snapcraft.io/user/yorokobicom/agent) 
 [![ISC License](https://img.shields.io/github/license/yorokobicom/agent.svg)](https://github.com/heroku/cli/blob/master/LICENSE)
 
 Yorokobi provides automatic database backups for web applications.
