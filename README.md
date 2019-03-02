@@ -14,7 +14,9 @@ transfer them to Yorokobi backup servers.
 In Ubuntu 16+ simply run the following from your terminal.
 
 
-    snap install yorokobi
+    sudo snap install yorokobi --edge
+    snap connect yorokobi:mount-observe
+    snap connect yorokobi:process-control
 
 
 For other Linux distributions [see instructions](https://docs.snapcraft.io/installing-snapd/6735).
