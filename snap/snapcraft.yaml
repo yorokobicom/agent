@@ -7,17 +7,25 @@ description: |
   transfer them to Yorokobi backup servers.
 
 grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: strict
+confinement: devmode
 
 apps:
   yorokobi:
     command: yorokobi
-    plugs: [network, home]
+    plugs: 
+      - network
+      - mount-observe
+      - process-control
+
   daemon:
     command: yorokobid
     daemon: simple
     restart-condition: always
-    plugs: [network, network-bind, home]
+    plugs:
+      - network
+      - network-bind
+      - mount-observe
+      - process-control
 
 parts:
   yorokobi:
@@ -38,8 +46,22 @@ parts:
     stage-packages:
       - python3
       - python3-pip
-      - postgresql
+      - perl
+      - perl-base
+      - postgresql-10
     source: .      
+
+layout:
+  /usr/share/postgresql:
+    bind: $SNAP/usr/share/postgresql
+  /usr/share/postgresql-common:
+    bind: $SNAP/usr/share/postgresql-common
+  /usr/lib/x86_64-linux-gnu/perl-base:
+    bind: $SNAP/usr/lib/x86_64-linux-gnu/perl-base
+#   /tmp:
+#     bind: $SNAP_DATA/tmp
+#   /var/folders:
+#     bind: $SNAP_DATA/var/folders
 
 environment:
   LANG: C.UTF-8

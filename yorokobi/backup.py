@@ -73,19 +73,24 @@ class Backup(Thread):
         self.remofile_token = token
 
     def run(self):
-        self.logger.info("Starting backup now")
-        self.logger.info("Remofile port: {0}".format(self.remofile_port))
-        self.logger.info("Remofile token: {0}".format(self.remofile_token))
+        try:
+            self.logger.info("Starting backup now")
+            self.logger.info("Remofile port: {0}".format(self.remofile_port))
+            self.logger.info("Remofile token: {0}".format(self.remofile_token))
 
-        temporary_dir = TemporaryDirectory()
+            temporary_dir = TemporaryDirectory()
+            self.logger.info(temporary_dir)
 
-        self.dump_databases(temporary_dir)
-        self.create_tarball(temporary_dir)
-        self.send_tarball(temporary_dir)
+            self.dump_databases(temporary_dir)
+            self.create_tarball(temporary_dir)
+            self.send_tarball(temporary_dir)
 
-        temporary_dir.cleanup()
+            temporary_dir.cleanup()
 
-        self.logger.info("Backup successfully finished")
+            self.logger.info("Backup successfully finished")
+        except Exception as e:
+            self.logger.info('The backup was not completed.')
+            self.logger.info(e)
 
     def cancel_and_wait(self):
         pass # to be implemented
@@ -112,6 +117,7 @@ class Backup(Thread):
         databases_directory = temporary_dir / 'backups' / 'databases' / 'PostgreSQL'
         databases_directory.mkdir(parents=True, exist_ok=False)
 
+        self.logger.info(databases_directory)
         self.logger.info(str(selected_dbs))
 
         # connect to the database and dump the selected databases
@@ -138,7 +144,7 @@ class Backup(Thread):
         temporary_dir = PosixPath(temporary_dir.name)
         tarbal_filename = temporary_dir / tarball_name
         tarball_source  = temporary_dir / 'backups'
-
+        self.logger.info(tarbal_filename)
         tarball = tarfile.open(tarbal_filename, "w")
         tarball.add(tarball_source, arcname="backups")
         tarball.close()
