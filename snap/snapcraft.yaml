@@ -14,8 +14,6 @@ apps:
     command: yorokobi
     plugs: 
       - network
-      - mount-observe
-      - process-control
 
   daemon:
     command: yorokobid
@@ -24,8 +22,6 @@ apps:
     plugs:
       - network
       - network-bind
-      - mount-observe
-      - process-control
 
 parts:
   yorokobi:
@@ -48,20 +44,16 @@ parts:
       - python3-pip
       - perl
       - perl-base
-      - postgresql-10
+      - postgresql-client-10
     source: .      
 
 layout:
-  /usr/share/postgresql:
-    bind: $SNAP/usr/share/postgresql
-  /usr/share/postgresql-common:
-    bind: $SNAP/usr/share/postgresql-common
+  /usr/lib/postgresql/10/bin:
+    bind: $SNAP/usr/lib/postgresql/10/bin
+  /usr/share/perl5:
+    bind: $SNAP/usr/share/perl5
   /usr/lib/x86_64-linux-gnu/perl-base:
     bind: $SNAP/usr/lib/x86_64-linux-gnu/perl-base
-#   /tmp:
-#     bind: $SNAP_DATA/tmp
-#   /var/folders:
-#     bind: $SNAP_DATA/var/folders
 
 environment:
   LANG: C.UTF-8
