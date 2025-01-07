@@ -12,11 +12,20 @@ The agent is a system service that performs backups and encrypts.
 
 Run the setup to setup databases, folders and the path where to store backups.
 
-    ./agent setup
+    ./yorokobi setup
 
+## Usage
 
-## Backup
+```
+Usage:
+    yorokobi <command> [options]
 
-Simply run
+Commands:
+    setup     Configure backup settings and initialize repository
+    backup    Run a one-time backup
+    start     Start the backup daemon in the background
+    help      Show this help message
 
-    ./agent backup
+For more information about a command:
+    yorokobi help <command>
+```
