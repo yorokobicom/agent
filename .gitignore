@@ -1,0 +1,42 @@
+# Binaries and build artifacts
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+/vendor/
+
+# Go workspace file
+go.work
+
+# Temporary files
+/tmp/
+*.tmp
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.local
+
+# Backup files that might be created by the agent
+/tmp/yorokobi-backup-*
+
+# System specific files
+.DS_Store
+Thumbs.db
+config.yaml
+config
