@@ -22,6 +22,7 @@ Commands:
     setup     Configure backup settings and initialize repository
     backup    Run a one-time backup
     start     Start the backup daemon in the background
+    restore   Restore from a backup snapshot
     help      Show this help message
 
 For more information about a command:
@@ -57,6 +58,8 @@ func main() {
 		runBackup(cfg, logger)
 	case "start":
 		runDaemon(cfg, logger)
+	case "restore":
+		runRestore(cfg, logger)
 	default:
 		fmt.Printf("Unknown command: %s\nRun 'yorokobi help' for usage.\n", os.Args[1])
 		os.Exit(1)
@@ -111,6 +114,39 @@ func runDaemon(cfg *config.Config, logger logging.Logger) {
 	}
 }
 
+func runRestore(cfg *config.Config, logger logging.Logger) {
+	backuper := backups.NewResticBackuper(&cfg.BackupConfig, logger)
+
+	// Get list of snapshots
+	snapshots, err := backuper.ListSnapshots()
+	if err != nil {
+		logger.Fatalf("Failed to list snapshots: %v", err)
+	}
+
+	if len(snapshots) == 0 {
+		logger.Fatalf("No snapshots found in repository")
+	}
+
+	// Let user select a snapshot
+	snapshot, err := wizard.SelectSnapshot(snapshots)
+	if err != nil {
+		logger.Fatalf("Snapshot selection failed: %v", err)
+	}
+
+	// Ask for restore path
+	path := wizard.PromptString("Enter path to restore to:")
+	if path == "" {
+		logger.Fatalf("Restore path is required")
+	}
+
+	// Perform the restore
+	if err := backuper.Restore(snapshot.ID, path); err != nil {
+		logger.Fatalf("Restore failed: %v", err)
+	}
+
+	logger.Info("Restore completed successfully")
+}
+
 func showCommandHelp() {
 	if len(os.Args) < 3 {
 		fmt.Print(helpText)
@@ -148,6 +184,18 @@ Start command:
     - Runs in the background
     - Performs periodic backups based on schedule
     - Logs activity to configured location
+        `)
+	case "restore":
+		fmt.Println(`
+Restore command:
+    yorokobi restore <snapshot-id> <target-path>
+
+    Restores a backup snapshot to the specified path:
+    - snapshot-id: ID of the backup to restore (use 'restic snapshots' to list)
+    - target-path: Where to restore the backup
+
+    Example:
+    yorokobi restore 1a2b3c4d /path/to/restore
         `)
 	default:
 		fmt.Printf("Unknown command: %s\nRun 'yorokobi help' for usage.\n", os.Args[2])

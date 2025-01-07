@@ -1,6 +1,7 @@
 package backups
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -179,4 +180,53 @@ func (r *ResticBackuper) backupPath(path string, env []string) error {
 		return fmt.Errorf("restic backup failed for %s: %v\nOutput: %s", path, err, string(out))
 	}
 	return nil
+}
+
+func (r *ResticBackuper) Restore(snapshotID string, targetPath string) error {
+	r.logger.Info("Starting restore...")
+	startTime := time.Now()
+
+	// Set environment variables for restic
+	env := append(os.Environ(),
+		fmt.Sprintf("RESTIC_REPOSITORY=%s", r.config.Repository),
+		fmt.Sprintf("RESTIC_PASSWORD=%s", r.config.Password))
+
+	// Run restic restore command
+	r.logger.Info(fmt.Sprintf("Restoring snapshot %s to %s...", snapshotID, targetPath))
+	restoreCmd := execCommand("restic", "restore", snapshotID, "--target", targetPath)
+	restoreCmd.Env = env
+
+	if out, err := restoreCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("restic restore failed: %v\nOutput: %s", err, string(out))
+	}
+
+	r.logger.Info(fmt.Sprintf("Restore completed in %v", time.Since(startTime)))
+	return nil
+}
+
+type Snapshot struct {
+	ID       string
+	Time     time.Time
+	Paths    []string
+	Size     string
+	Hostname string
+}
+
+func (r *ResticBackuper) ListSnapshots() ([]Snapshot, error) {
+	cmd := execCommand("restic", "snapshots", "--json")
+	cmd.Env = append(os.Environ(),
+		fmt.Sprintf("RESTIC_REPOSITORY=%s", r.config.Repository),
+		fmt.Sprintf("RESTIC_PASSWORD=%s", r.config.Password))
+
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list snapshots: %v", err)
+	}
+
+	var snapshots []Snapshot
+	if err := json.Unmarshal(out, &snapshots); err != nil {
+		return nil, fmt.Errorf("failed to parse snapshots: %v", err)
+	}
+
+	return snapshots, nil
 }

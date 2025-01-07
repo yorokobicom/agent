@@ -24,6 +24,7 @@ Commands:
     setup     Configure backup settings and initialize repository
     backup    Run a one-time backup
     start     Start the backup daemon in the background
+    restore   Restore from a backup snapshot    
     help      Show this help message
 
 For more information about a command:
